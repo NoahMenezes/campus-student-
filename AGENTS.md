@@ -39,3 +39,18 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Error-Solving Guide (read this before fixing errors)
+
+### Web hydration mismatch (ThemedView/ThemedText colors flip on web)
+**Symptom:** Console error "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties." Server renders light theme (`rgb(255,255,255)`, `rgb(0,0,0)`), client renders dark theme (`rgba(0,0,0,1)`, `rgba(255,255,255,1)`), or vice versa.
+**Root cause:** `use-color-scheme.web.ts` returns a different value during SSR vs after client hydration when the user's system color scheme is dark.
+**Fix:** `src/hooks/use-color-scheme.web.ts` must return `'light'` before hydration (to match SSR) and the real scheme after hydration. Use a `useState`/`useEffect` hydration guard with a targeted `// eslint-disable-next-line react-hooks/set-state-in-effect` comment on the `setHasHydrated(true)` line. Do NOT simply return `useRNColorScheme() ?? 'light'` — that causes the mismatch.
+**Verification:** `npx tsc --noEmit` and `npx expo lint` must both exit 0.
+
+### General error workflow
+1. Read the full error + component stack (not just the last line).
+2. Identify server-vs-client divergence (SSR hydration, `typeof window`, `Date.now()`, `Math.random()`).
+3. Fix the source, not the symptom.
+4. Run `npx tsc --noEmit` and `npx expo lint` to confirm.
+5. Commit the fix with a clear message.
