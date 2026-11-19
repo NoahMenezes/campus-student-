@@ -1,59 +1,93 @@
-import { Video, AVPlaybackStatus, ResizeMode } from 'expo-av';
+import { router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-const SHOW_MS = 8000;
-const BG = '#000000';
+const FADE_MS = 400;
+const DURATION_FALLBACK_MS = 10000;
 
 export function VideoSplashOverlay() {
-  const router = useRouter();
-  const [finished, setFinished] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const [fading, setFading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hasFinishedRef = useRef(false);
 
-  const finish = useCallback(() => {
-    if (finished) return;
-    setFinished(true);
-    SplashScreen.hideAsync().finally(() => {
-      router.replace('/login');
-    });
-  }, [finished, router]);
-
-  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded && status.didJustFinish) {
-      finish();
-    }
-  };
+  const handleFinish = useCallback(() => {
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
+    setFading(true);
+    setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+      setVisible(false);
+      // Navigate to signup after video
+      router.replace('/signup');
+    }, FADE_MS);
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(finish, SHOW_MS);
+    SplashScreen.hideAsync().catch(() => {});
+
+    const video = videoRef.current;
+    if (video) {
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Autoplay blocked:', err);
+          handleFinish();
+        });
+      }
+    }
+
+    const timer = setTimeout(handleFinish, DURATION_FALLBACK_MS);
     return () => clearTimeout(timer);
-  }, [finish]);
+  }, [handleFinish]);
+
+  if (!visible) return null;
 
   return (
-    <View style={styles.container}>
-      <Video
-        source={{ uri: '/konnakol_first_appearance.mp4' }}
-        style={styles.video}
-        shouldPlay
-        isLooping={false}
-        resizeMode={ResizeMode.CONTAIN}
-        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-      />
-    </View>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: '#000000',
+        zIndex: 999999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        opacity: fading ? 0 : 1,
+        transition: `opacity ${FADE_MS}ms ease-out`,
+        pointerEvents: fading ? 'none' : 'auto',
+      }}
+    >
+      <video
+        ref={videoRef}
+        src="/konnakol_first_appearance.mp4"
+        autoPlay
+        muted
+        playsInline
+        preload="auto"
+        onEnded={handleFinish}
+        onError={() => handleFinish()}
+        style={{
+          /* Cover the entire viewport — fills portrait mobile without letterboxing */
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'cover',
+          objectPosition: 'center center',
+          backgroundColor: '#000000',
+          display: 'block',
+        }}
+      >
+        <source src="/konnakol_first_appearance.mp4" type="video/mp4" />
+      </video>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: BG,
-    zIndex: 2000,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  video: {
-    width: '100%',
-    height: '100%',
-  },
-});
