@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/NoahMenezes/campus-student-/security/advisories/new
+    about: Report security vulnerabilities privately through GitHub's advisory system
+  - name: Community Discussion
+    url: https://chat.expo.dev/
+    about: Ask questions and discuss in the Expo Discord community

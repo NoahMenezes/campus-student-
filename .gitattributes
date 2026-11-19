@@ -1,0 +1,27 @@
+# Set default encoding for text files
+* text=auto
+
+# JavaScript/TypeScript
+*.{js,jsx,ts,tsx} text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# Markdown
+*.md text
+
+# Expo config
+app.json text
+
+# Images - do not normalize
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg binary
+*.ico binary
+
+# Certificate files - binary
+*.p12 binary
+*.p8 binary
+*.jks binary
+*.mobileprovision binary

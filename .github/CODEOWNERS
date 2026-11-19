@@ -1,0 +1,12 @@
+# CODEOWNERS
+
+# Default owners for everything
+*       @NoahMenezes
+
+# Expo Router configuration
+/app.json                         @NoahMenezes
+/src/app/_layout.tsx              @NoahMenezes
+
+# Theme and constants
+/src/constants/theme.ts           @NoahMenezes
+/src/hooks/use-color-scheme.web.ts @NoahMenezes

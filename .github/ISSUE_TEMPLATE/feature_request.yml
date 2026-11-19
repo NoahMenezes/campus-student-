@@ -1,0 +1,41 @@
+feature_request:
+  name: Feature Request
+  description: Suggest a new feature for campus-student
+  title: "[Feature] "
+  labels: ["enhancement"]
+  body:
+    - type: markdown
+      attributes:
+        value: "Have an idea for campus-student? Tell us about it!"
+    - type: textarea
+      id: problem
+      attributes:
+        label: Problem
+        description: Is your feature request related to a problem? Please describe.
+      validations:
+        required: true
+    - type: textarea
+      id: solution
+      attributes:
+        label: Proposed Solution
+        description: Describe the solution you'd like to see implemented.
+      validations:
+        required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+        label: Alternatives Considered
+        description: Describe any alternative solutions or features you've considered.
+    - type: textarea
+      id: additional
+      attributes:
+        label: Additional Context
+        description: Screenshots, mockups, or other context.
+    - type: checkboxes
+      id: terms
+      attributes:
+        label: Code of Conduct
+        description: By submitting this issue, you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md)
+        options:
+          - label: I agree to follow the project's Code of Conduct
+            required: true

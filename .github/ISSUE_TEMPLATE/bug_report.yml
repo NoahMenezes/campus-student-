@@ -1,0 +1,75 @@
+bug_report:
+  name: Bug Report
+  description: File a bug report for campus-student
+  title: "[Bug] "
+  labels: ["bug"]
+  body:
+    - type: markdown
+      attributes:
+        value: "Thank you for reporting a bug! Please fill out the form below."
+    - type: input
+      id: expo-version
+      attributes:
+        label: Expo SDK version
+        description: Which version of Expo are you using? (check package.json)
+        placeholder: "~58.0.26"
+      validations:
+        required: true
+    - type: input
+      id: react-native-version
+      attributes:
+        label: React Native version
+        description: Which version of React Native are you using?
+        placeholder: "0.88.1"
+      validations:
+        required: true
+    - type: input
+      id: platform
+      attributes:
+        label: Platform(s)
+        description: Which platforms are affected?
+        placeholder: "iOS, Android, web"
+        value: "iOS, Android, web"
+      validations:
+        required: true
+    - type: textarea
+      id: description
+      attributes:
+        label: Description
+        description: What happened? What did you expect to happen?
+      validations:
+        required: true
+    - type: textarea
+      id: reproduction
+      attributes:
+        label: Steps to Reproduce
+        description: Steps to reproduce the behavior.
+      validations:
+        required: true
+    - type: textarea
+      id: expected
+      attributes:
+        label: Expected Behavior
+        description: What did you expect to happen?
+      validations:
+        required: true
+    - type: textarea
+      id: actual
+      attributes:
+        label: Actual Behavior
+        description: What actually happened?
+      validations:
+        required: true
+    - type: textarea
+      id: additional
+      attributes:
+        label: Additional Context
+        description: Screenshots, error logs, device models, etc.
+    - type: checkboxes
+      id: terms
+      attributes:
+        label: Code of Conduct
+        description: By submitting this issue, you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md)
+        options:
+          - label: I agree to follow the project's Code of Conduct
+            required: true
