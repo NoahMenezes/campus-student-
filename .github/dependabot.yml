@@ -12,23 +12,11 @@ updates:
         patterns:
           - "expo*"
           - "@expo/*"
-    labels:
-      - "dependencies"
-      - "security"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "daily"
-      time: "09:00"
-    groups:
       security-updates:
         patterns:
           - "*"
     labels:
+      - "dependencies"
       - "security"
     commit-message:
       prefix: "chore(deps)"
