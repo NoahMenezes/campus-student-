@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,26 +21,50 @@ import {
   GlassCardContent,
   GlassInput,
 } from '@/components/glass';
+import { signup } from '@/services/auth';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
+    if (!name.trim() || !email.trim() || !password) {
+      setErrorMessage('Please fill in all required fields.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
+    setErrorMessage(null);
     setLoading(true);
-    // TODO: wire up real auth
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      await signup({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword,
+      });
       router.replace('/home');
-    }, 1200);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration failed';
+      setErrorMessage(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.root}>
-      {/* Dark forest background */}
+      {/* Dark Forest Background */}
       <Image
         source={require('@/assets/konnakol_background.png')}
         style={StyleSheet.absoluteFill}
@@ -48,15 +73,14 @@ export default function SignupScreen() {
         priority="high"
       />
 
-      {/* Deep cinematic gradient overlay */}
+      {/* Cinematic Deep Dark Gradient Overlay */}
       <LinearGradient
         colors={[
-          'rgba(2, 4, 10, 0.55)',
-          'rgba(5, 8, 15, 0.70)',
-          'rgba(3, 5, 12, 0.88)',
-          'rgba(2, 3, 8, 0.97)',
+          'rgba(2, 4, 8, 0.60)',
+          'rgba(4, 7, 14, 0.78)',
+          'rgba(2, 4, 10, 0.92)',
         ]}
-        locations={[0, 0.3, 0.65, 1]}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -72,116 +96,144 @@ export default function SignupScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Brand section */}
-            <Animated.View entering={FadeInDown.duration(700).delay(100)} style={styles.brandSection}>
-              {/* Logo mark */}
-              <View style={styles.logoMark}>
-                <View style={styles.logoGlow} />
-                <Text style={styles.logoLetter}>K</Text>
-              </View>
-              <Text style={styles.brandName}>Konnakol</Text>
-              <Text style={styles.brandTagline}>Campus Student</Text>
+            {/* Header */}
+            <Animated.View entering={FadeInDown.duration(600).delay(80)} style={styles.header}>
+              <Text style={styles.brandTitle}>Konnakol</Text>
+              <Text style={styles.brandSubtitle}>Student Registration</Text>
             </Animated.View>
 
-            {/* Signup card */}
-            <Animated.View entering={FadeInUp.duration(700).delay(300)} style={styles.cardWrapper}>
-              <GlassCard
-                intensity="default"
-                borderRadius={28}
-                style={styles.card}
-              >
+            {/* Registration Card */}
+            <Animated.View entering={FadeInUp.duration(600).delay(180)} style={styles.cardContainer}>
+              <GlassCard intensity="default" borderRadius={24} style={styles.card}>
                 <GlassCardContent>
-                  <View style={styles.formHeader}>
+                  <View style={styles.cardHeader}>
                     <Text style={styles.formTitle}>Create account</Text>
-                    <Text style={styles.formSubtitle}>Join your campus community</Text>
+                    <Text style={styles.formCaption}>
+                      Register with your campus email address
+                    </Text>
                   </View>
 
-                  {/* Fields */}
-                  <View style={styles.fields}>
-                    <Animated.View entering={FadeInUp.duration(500).delay(400)}>
-                      <Text style={styles.fieldLabel}>Full Name</Text>
-                      <GlassInput
-                        placeholder="Your full name"
-                        value={name}
-                        onChangeText={setName}
-                        autoCapitalize="words"
-                        returnKeyType="next"
-                        leftIcon={<Text style={styles.fieldIcon}>👤</Text>}
-                      />
-                    </Animated.View>
+                  {/* Inline Error Banner */}
+                  {errorMessage ? (
+                    <View style={styles.errorBanner}>
+                      <Text style={styles.errorText}>{errorMessage}</Text>
+                    </View>
+                  ) : null}
 
-                    <Animated.View entering={FadeInUp.duration(500).delay(500)}>
-                      <Text style={styles.fieldLabel}>Email</Text>
+                  <View style={styles.fieldGroup}>
+                    <View style={styles.fieldBlock}>
+                      <Text style={styles.label}>Full name</Text>
                       <GlassInput
-                        placeholder="student@college.edu"
+                        placeholder="Alex Morgan"
+                        value={name}
+                        onChangeText={(val) => {
+                          setName(val);
+                          if (errorMessage) setErrorMessage(null);
+                        }}
+                        autoCapitalize="words"
+                        autoComplete="name"
+                        returnKeyType="next"
+                        editable={!loading}
+                      />
+                    </View>
+
+                    <View style={styles.fieldBlock}>
+                      <Text style={styles.label}>Campus email</Text>
+                      <GlassInput
+                        placeholder="student@university.edu"
                         value={email}
-                        onChangeText={setEmail}
+                        onChangeText={(val) => {
+                          setEmail(val);
+                          if (errorMessage) setErrorMessage(null);
+                        }}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        autoComplete="email"
                         returnKeyType="next"
-                        leftIcon={<Text style={styles.fieldIcon}>✉️</Text>}
+                        editable={!loading}
                       />
-                    </Animated.View>
+                    </View>
 
-                    <Animated.View entering={FadeInUp.duration(500).delay(600)}>
-                      <Text style={styles.fieldLabel}>Password</Text>
+                    <View style={styles.fieldBlock}>
+                      <View style={styles.passwordLabelRow}>
+                        <Text style={styles.label}>Password</Text>
+                      </View>
                       <GlassInput
-                        placeholder="Create a password"
+                        placeholder="At least 6 characters"
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={(val) => {
+                          setPassword(val);
+                          if (errorMessage) setErrorMessage(null);
+                        }}
                         secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        returnKeyType="next"
+                        editable={!loading}
+                        rightIcon={
+                          <Text style={styles.passwordToggleText}>
+                            {showPassword ? 'Hide' : 'Show'}
+                          </Text>
+                        }
+                        onRightIconPress={() => setShowPassword((prev) => !prev)}
+                      />
+                    </View>
+
+                    <View style={styles.fieldBlock}>
+                      <Text style={styles.label}>Confirm password</Text>
+                      <GlassInput
+                        placeholder="Re-enter password"
+                        value={confirmPassword}
+                        onChangeText={(val) => {
+                          setConfirmPassword(val);
+                          if (errorMessage) setErrorMessage(null);
+                        }}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
                         returnKeyType="done"
                         onSubmitEditing={handleSignup}
                         blurOnSubmit
-                        leftIcon={<Text style={styles.fieldIcon}>🔒</Text>}
-                        rightIcon={
-                          <Text style={styles.fieldIcon}>
-                            {showPassword ? '🙈' : '👁️'}
-                          </Text>
-                        }
-                        onRightIconPress={() => setShowPassword(!showPassword)}
+                        editable={!loading}
                       />
-                    </Animated.View>
+                    </View>
                   </View>
 
-                  {/* Sign up button */}
-                  <Animated.View entering={FadeInUp.duration(500).delay(700)}>
+                  <View style={styles.actionBlock}>
                     <GlassButton
                       variant="default"
                       size="lg"
                       onPress={handleSignup}
                       disabled={loading}
-                      style={styles.signupButton}
+                      style={styles.submitButton}
                     >
-                      {loading ? 'Creating account…' : 'Sign Up'}
+                      {loading ? (
+                        <View style={styles.loadingRow}>
+                          <ActivityIndicator size="small" color="#ffffff" />
+                          <Text style={styles.loadingText}>Creating account…</Text>
+                        </View>
+                      ) : (
+                        'Create Account'
+                      )}
                     </GlassButton>
-                  </Animated.View>
+                  </View>
 
-                  {/* Divider */}
-                  <Animated.View entering={FadeIn.duration(500).delay(800)} style={styles.divider}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>or</Text>
-                    <View style={styles.dividerLine} />
-                  </Animated.View>
-
-                  {/* Login link */}
-                  <Animated.View entering={FadeIn.duration(500).delay(850)} style={styles.loginRow}>
-                    <Text style={styles.loginPrompt}>Already have an account?</Text>
-                    <Pressable onPress={() => router.push('/login')} hitSlop={8}>
-                      <Text style={styles.loginLink}>Log in</Text>
+                  <View style={styles.footerLinkRow}>
+                    <Text style={styles.footerPrompt}>Already have an account?</Text>
+                    <Pressable
+                      onPress={() => router.replace('/login')}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.footerLink}>Sign in</Text>
                     </Pressable>
-                  </Animated.View>
+                  </View>
                 </GlassCardContent>
               </GlassCard>
             </Animated.View>
 
-            {/* Footer */}
-            <Animated.View entering={FadeIn.duration(600).delay(950)} style={styles.footer}>
-              <Text style={styles.footerText}>
-                By signing up you agree to our{' '}
-                <Text style={styles.footerLink}>Terms</Text>
-                {' & '}
-                <Text style={styles.footerLink}>Privacy Policy</Text>
+            {/* Bottom Note */}
+            <Animated.View entering={FadeIn.duration(500).delay(300)} style={styles.systemNote}>
+              <Text style={styles.systemNoteText}>
+                Konnakol Campus System
               </Text>
             </Animated.View>
           </ScrollView>
@@ -194,7 +246,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#02030a',
+    backgroundColor: '#020408',
   },
   safe: {
     flex: 1,
@@ -207,163 +259,147 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: 22,
+    paddingVertical: 32,
     justifyContent: 'center',
-    maxWidth: 480,
+    maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
   },
 
-  /* Brand */
-  brandSection: {
+  /* Header */
+  header: {
     alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 28,
-    gap: 6,
+    marginBottom: 24,
   },
-  logoMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    borderTopColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    shadowColor: '#38bdf8',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 8,
-    position: 'relative',
-  },
-  logoGlow: {
-    position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(56,189,248,0.15)',
-  },
-  logoLetter: {
-    fontSize: 34,
-    fontWeight: '800',
+  brandTitle: {
+    fontSize: 32,
+    fontWeight: '700',
     color: '#ffffff',
-    letterSpacing: -1,
-    zIndex: 1,
+    letterSpacing: -0.6,
   },
-  brandName: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: -0.8,
-  },
-  brandTagline: {
+  brandSubtitle: {
     fontSize: 14,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.50)',
-    letterSpacing: 0.5,
+    color: 'rgba(255, 255, 255, 0.50)',
+    marginTop: 4,
+    letterSpacing: 0.2,
   },
 
   /* Card */
-  cardWrapper: {
+  cardContainer: {
     width: '100%',
   },
   card: {
-    backgroundColor: 'rgba(10,15,30,0.55)',
+    backgroundColor: 'rgba(8, 12, 20, 0.70)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    borderTopColor: 'rgba(255, 255, 255, 0.20)',
   },
-
-  /* Form */
-  formHeader: {
+  cardHeader: {
     marginBottom: 20,
-    gap: 4,
   },
   formTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#ffffff',
-    letterSpacing: -0.4,
+    letterSpacing: -0.2,
   },
-  formSubtitle: {
+  formCaption: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(255, 255, 255, 0.55)',
+    marginTop: 4,
+    lineHeight: 18,
   },
-  fields: {
+
+  /* Error Banner */
+  errorBanner: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#fca5a5',
+    lineHeight: 18,
+  },
+
+  /* Form Fields */
+  fieldGroup: {
     gap: 14,
-    marginBottom: 20,
+    marginBottom: 22,
   },
-  fieldLabel: {
+  fieldBlock: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.75)',
+  },
+  passwordLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  passwordToggleText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.65)',
-    letterSpacing: 0.6,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  fieldIcon: {
-    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.60)',
+    paddingHorizontal: 4,
   },
 
-  /* Signup button */
-  signupButton: {
+  /* Action */
+  actionBlock: {
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  submitButton: {
     width: '100%',
-    backgroundColor: 'rgba(56,189,248,0.22)',
-    borderColor: 'rgba(56,189,248,0.40)',
-    borderTopColor: 'rgba(56,189,248,0.60)',
+    backgroundColor: 'rgba(32, 138, 239, 0.85)',
+    borderColor: 'rgba(56, 189, 248, 0.50)',
+    borderTopColor: 'rgba(255, 255, 255, 0.40)',
   },
-
-  /* Divider */
-  divider: {
+  loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
-    marginVertical: 16,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-  },
-  dividerText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.35)',
-    fontWeight: '500',
+  loadingText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 
-  /* Login row */
-  loginRow: {
+  /* Footer Links */
+  footerLinkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
+    paddingTop: 4,
   },
-  loginPrompt: {
+  footerPrompt: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(255, 255, 255, 0.50)',
   },
-  loginLink: {
+  footerLink: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#38bdf8',
   },
 
-  /* Footer */
-  footer: {
-    marginTop: 20,
+  /* System Note */
+  systemNote: {
     alignItems: 'center',
-    paddingBottom: 8,
+    marginTop: 24,
   },
-  footerText: {
+  systemNoteText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.30)',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  footerLink: {
-    color: 'rgba(255,255,255,0.55)',
-    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.30)',
+    letterSpacing: 0.3,
   },
 });
-
