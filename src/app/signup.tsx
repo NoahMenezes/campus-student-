@@ -33,7 +33,7 @@ export default function SignupScreen() {
     // TODO: wire up real auth
     setTimeout(() => {
       setLoading(false);
-      router.replace('/');
+      router.replace('/home');
     }, 1200);
   };
 
@@ -366,3 +366,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

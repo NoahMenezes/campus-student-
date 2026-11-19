@@ -24,7 +24,7 @@ export function VideoSplashOverlay() {
     }).start(() => {
       SplashScreen.hideAsync().catch(() => {});
       setVisible(false);
-      router.replace('/signup');
+      router.replace('/login');
     });
   }, [fadeAnim]);
 

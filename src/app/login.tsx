@@ -31,7 +31,7 @@ export default function LoginScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      router.replace('/');
+      router.replace('/home');
     }, 1200);
   };
 

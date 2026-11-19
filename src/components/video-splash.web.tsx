@@ -18,8 +18,8 @@ export function VideoSplashOverlay() {
     setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});
       setVisible(false);
-      // Navigate to signup after video
-      router.replace('/signup');
+      // Navigate to login after video
+      router.replace('/login');
     }, FADE_MS);
   }, []);
 

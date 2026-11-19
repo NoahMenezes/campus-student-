@@ -19,11 +19,13 @@ export default function RootLayout() {
           animation: 'fade',
         }}
       >
-        {/* Auth screens — no header, no back gesture */}
-        <Stack.Screen name="signup" options={{ gestureEnabled: false }} />
+        {/* index redirects to /login */}
+        <Stack.Screen name="index" options={{ gestureEnabled: false }} />
+        {/* Auth screens */}
         <Stack.Screen name="login" options={{ gestureEnabled: false }} />
-        {/* Main app */}
-        <Stack.Screen name="index" />
+        <Stack.Screen name="signup" options={{ gestureEnabled: false }} />
+        {/* Main app screens (post-auth) */}
+        <Stack.Screen name="home" />
         <Stack.Screen name="explore" />
       </Stack>
     </ThemeProvider>
