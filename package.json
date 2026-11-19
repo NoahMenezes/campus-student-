@@ -55,5 +55,14 @@
   "private": true,
   "overrides": {
     "minimatch": "^11.0.1"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "expo-av"
+        ]
+      }
+    }
   }
 }
