@@ -1,0 +1,43 @@
+export const ThemeColors = {
+  dark: {
+    background: '#0A0B10',
+    surface: '#17181D',
+    surfaceElevated: '#181B24',
+    border: '#292B33',
+    borderFocus: '#374151',
+    text: '#F5F5F7',
+    textSecondary: '#9CA3AF',
+    textMuted: '#858891',
+    accent: '#2583E8',
+    accentHover: '#1D4ED8',
+    accentSurface: 'rgba(37, 131, 232, 0.10)',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    shadow: 'rgba(0, 0, 0, 0.40)',
+  },
+  light: {
+    background: '#FFFFFF',
+    surface: '#17181D',
+    surfaceElevated: '#FFFFFF',
+    border: '#292B33',
+    borderFocus: '#CBD5E1',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    textMuted: '#858891',
+    accent: '#2583E8',
+    accentHover: '#1D4ED8',
+    accentSurface: 'rgba(37, 131, 232, 0.10)',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    shadow: 'rgba(0, 0, 0, 0.08)',
+  },
+  radius: {
+    none: 0,
+    sm: 2,
+    md: 4,
+  },
+} as const;
+
+export type ThemeColorKey = keyof typeof ThemeColors.dark;

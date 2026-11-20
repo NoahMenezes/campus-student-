@@ -4,10 +4,12 @@ export interface SubjectAttendance {
   id: string;
   code: string;
   name: string;
+  type: 'theory' | 'lab';
+  category: 'mandatory' | 'elective';
   attended: number;
   total: number;
   percentage: number;
-  progressColor: string; // Yellow/orange for warning (75-79%), Green for good (>=80%), Coral/Red for danger (<75%)
+  progressColor: string;
 }
 
 export interface AttendanceWarning {
@@ -27,33 +29,16 @@ export interface AttendanceData {
 }
 
 const DEFAULT_SUBJECTS: SubjectAttendance[] = [
-  {
-    id: 'sub_dbms',
-    code: 'CS501',
-    name: 'DBMS',
-    attended: 19,
-    total: 25,
-    percentage: 76,
-    progressColor: '#F59E0B', // Yellow/Orange
-  },
-  {
-    id: 'sub_os',
-    code: 'CS502',
-    name: 'Operating Systems',
-    attended: 22,
-    total: 25,
-    percentage: 88,
-    progressColor: '#10B981', // Green
-  },
-  {
-    id: 'sub_networks',
-    code: 'CS503',
-    name: 'Networks',
-    attended: 17,
-    total: 25,
-    percentage: 68,
-    progressColor: '#EF4444', // Coral / Red
-  },
+  { id: 'sub_dbms', code: 'CECMP300', name: 'Database Management Systems', attended: 19, total: 25, percentage: 76, progressColor: '#F59E0B', type: 'theory', category: 'mandatory' },
+  { id: 'sub_dbms_lab', code: 'CECMP301', name: 'Database Management Systems Lab', attended: 20, total: 22, percentage: 90, progressColor: '#10B981', type: 'lab', category: 'mandatory' },
+  { id: 'sub_dccn', code: 'CECMP302', name: 'Data Communications and Computer Networks', attended: 17, total: 25, percentage: 68, progressColor: '#EF4444', type: 'theory', category: 'mandatory' },
+  { id: 'sub_dccn_lab', code: 'CECMP303', name: 'Data Communications and Computer Networks Lab', attended: 18, total: 22, percentage: 81, progressColor: '#10B981', type: 'lab', category: 'mandatory' },
+  { id: 'sub_ai', code: 'CECMP304', name: 'Artificial Intelligence', attended: 21, total: 25, percentage: 84, progressColor: '#10B981', type: 'theory', category: 'mandatory' },
+  { id: 'sub_ai_lab', code: 'CECMP305', name: 'Artificial Intelligence Lab', attended: 19, total: 22, percentage: 86, progressColor: '#10B981', type: 'lab', category: 'mandatory' },
+  { id: 'sub_daa', code: 'CECMP306', name: 'Design and Analysis of Algorithms', attended: 16, total: 25, percentage: 64, progressColor: '#EF4444', type: 'theory', category: 'mandatory' },
+  { id: 'sub_daa_lab', code: 'CECMP307', name: 'Design and Analysis of Algorithms Lab', attended: 17, total: 22, percentage: 77, progressColor: '#F59E0B', type: 'lab', category: 'mandatory' },
+  { id: 'sub_sc', code: 'CECMP325', name: 'Soft Computing', attended: 14, total: 20, percentage: 70, progressColor: '#EF4444', type: 'theory', category: 'elective' },
+  { id: 'sub_sc_lab', code: 'CECMP326', name: 'Soft Computing Lab', attended: 15, total: 18, percentage: 83, progressColor: '#10B981', type: 'lab', category: 'elective' },
 ];
 
 export function calculateAttendanceWarning(
@@ -143,8 +128,8 @@ export async function fetchAttendanceData(user: AuthUser | null): Promise<Attend
   }
 
   // Calculate overall metrics from default subjects
-  const totalAttended = 46;
-  const totalClasses = 56;
+  const totalAttended = DEFAULT_SUBJECTS.reduce((sum, s) => sum + s.attended, 0);
+  const totalClasses = DEFAULT_SUBJECTS.reduce((sum, s) => sum + s.total, 0);
   const overallPct = Math.round((totalAttended / totalClasses) * 100);
 
   return {

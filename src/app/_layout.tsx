@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { useColorScheme as useAppColorScheme } from '@/hooks/use-color-scheme';
+import { VideoSplashOverlay } from '@/components/video-splash';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -10,6 +11,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <VideoSplashOverlay />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -23,6 +25,9 @@ export default function RootLayout() {
         <Stack.Screen name="signup" options={{ gestureEnabled: false }} />
         {/* Main app screens (post-auth) */}
         <Stack.Screen name="home" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="subjects" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="calendar" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="timetable" options={{ gestureEnabled: false }} />
         <Stack.Screen name="qr-scanner" options={{ gestureEnabled: false }} />
         <Stack.Screen name="attendance-history" options={{ gestureEnabled: false }} />
         <Stack.Screen name="profile" options={{ gestureEnabled: false }} />

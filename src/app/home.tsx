@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -11,10 +11,10 @@ import {
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
-import { getUser } from '@/services/auth';
-import { fetchAttendanceData, type AttendanceData } from '@/services/attendance';
-import { GlassButton, GlassCard, GlassCardContent } from '@/components/glass';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
+import { GlassButton, GlassCard, GlassCardContent } from '@/components/glass';
+import { fetchAttendanceData, type AttendanceData } from '@/services/attendance';
+import { getUser } from '@/services/auth';
 
 const BG_MAIN = '#090A0C';
 const SAGE = '#8A9A7B';
@@ -98,7 +98,7 @@ export default function HomeScreen() {
                 {data?.semester || 'Semester 5'} &bull; Campus Attendance
               </Text>
             </View>
-            <GlassButton variant="outline" size="sm" onPress={() => {}}>
+            <GlassButton variant="outline" size="sm" onPress={() => { }}>
               <Text style={styles.navText}>Notifications</Text>
             </GlassButton>
           </Animated.View>

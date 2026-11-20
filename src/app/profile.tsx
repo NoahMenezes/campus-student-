@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
-import { getUser, logout } from '@/services/auth';
-import { GlassCard, GlassCardContent } from '@/components/glass/glass-card';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
+import { GlassCard, GlassCardContent } from '@/components/glass/glass-card';
+import { getUser, logout } from '@/services/auth';
 
 const BG_MAIN = '#090A0C';
 const DUSTY_RED = '#B55A5A';
@@ -45,10 +45,12 @@ export default function ProfileScreen() {
       'Are you sure you want to sign out of Konnakol?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: async () => {
-          await logout();
-          router.replace('/login');
-        } },
+        {
+          text: 'Sign Out', style: 'destructive', onPress: async () => {
+            await logout();
+            router.replace('/login');
+          }
+        },
       ]
     );
   };

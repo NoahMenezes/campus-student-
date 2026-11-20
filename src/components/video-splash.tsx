@@ -1,4 +1,3 @@
-import { ResizeMode, Video, AVPlaybackStatus } from 'expo-av';
 import { router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,11 +8,25 @@ import { isAuthenticated } from '@/services/auth';
 const FADE_MS = 400;
 const DURATION_FALLBACK_MS = 10000;
 
+let Video: any = null;
+let ResizeMode: any = null;
+let expoAvAvailable = false;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const expoAv = require('expo-av');
+  Video = expoAv.Video;
+  ResizeMode = expoAv.ResizeMode;
+  expoAvAvailable = true;
+} catch {
+  expoAvAvailable = false;
+}
+
 export function VideoSplashOverlay() {
   const [visible, setVisible] = useState(true);
   const [fadeAnim] = useState(() => new Animated.Value(1));
   const hasFinishedRef = useRef(false);
-  const videoRef = useRef<Video | null>(null);
+  const videoRef = useRef<any>(null);
 
   const handleFinish = useCallback(() => {
     if (hasFinishedRef.current) return;
@@ -36,20 +49,6 @@ export function VideoSplashOverlay() {
     });
   }, [fadeAnim]);
 
-  const handlePlaybackStatusUpdate = useCallback(
-    (status: AVPlaybackStatus) => {
-      if (status.isLoaded) {
-        if (status.didJustFinish) {
-          handleFinish();
-        }
-      } else if (status.error) {
-        console.warn('Video playback error:', status.error);
-        handleFinish();
-      }
-    },
-    [handleFinish]
-  );
-
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
 
@@ -57,7 +56,13 @@ export function VideoSplashOverlay() {
     return () => clearTimeout(safetyTimer);
   }, [handleFinish]);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!expoAvAvailable) {
+      handleFinish();
+    }
+  }, [handleFinish]);
+
+  if (!visible || !expoAvAvailable) return null;
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -70,7 +75,7 @@ export function VideoSplashOverlay() {
         isLooping={false}
         resizeMode={ResizeMode.COVER}
         useNativeControls={false}
-        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        onPlaybackStatusUpdate={() => {}}
         onError={() => handleFinish()}
       />
     </Animated.View>

@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
-import { BarCodeScanner } from 'expo-barcode-scanner';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -16,6 +15,18 @@ import { GlassButton } from '@/components/glass/glass-button';
 import { GlassCard, GlassCardContent } from '@/components/glass/glass-card';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 
+let BarCodeScanner: any = null;
+let barcodeScannerAvailable = false;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const expoBarcodeScanner = require('expo-barcode-scanner');
+try {
+  BarCodeScanner = expoBarcodeScanner.BarCodeScanner;
+  barcodeScannerAvailable = true;
+} catch {
+  barcodeScannerAvailable = false;
+}
+
 const BG_MAIN = '#090A0C';
 const BRAND = '#A0A7B1';
 const SAGE = '#8A9A7B';
@@ -24,18 +35,27 @@ const DUSTY_RED = '#B55A5A';
 type ScanState = 'idle' | 'detected' | 'processing' | 'success' | 'error' | 'permission-denied';
 
 export default function QRScannerScreen() {
-  const [permission, requestPermission] = BarCodeScanner.usePermissions();
+  const [permission, setPermission] = useState<{ status: string } | null>(null);
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [scanMessage, setScanMessage] = useState<string>('');
   const [processing, setProcessing] = useState(false);
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const hasScannedRef = useRef(false);
 
-  const defaultMessage =
-    permission?.status === 'denied'
-      ? 'Camera permission is required to scan QR codes.'
-      : 'Point camera at a QR code to scan attendance.';
-  const activeMessage = scanMessage || defaultMessage;
+  useEffect(() => {
+    if (!barcodeScannerAvailable) return;
+    (async () => {
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      setPermission({ status });
+      if (status === 'granted') {
+        setScanState('idle');
+        setScanMessage('Point camera at a QR code to scan attendance.');
+      } else {
+        setScanState('permission-denied');
+        setScanMessage('Camera permission denied. Cannot scan QR codes.');
+      }
+    })();
+  }, []);
 
   const handleBarCodeScanned = async (data: { data: string }) => {
     if (hasScannedRef.current || processing) return;
@@ -60,7 +80,7 @@ export default function QRScannerScreen() {
       setTimeout(() => {
         hasScannedRef.current = false;
         setScanState('idle');
-        setScanMessage('');
+        setScanMessage('Point camera at a QR code to scan attendance.');
         setLastScanned(null);
       }, 3000);
     }
@@ -85,15 +105,24 @@ export default function QRScannerScreen() {
   };
 
   const requestCameraPermission = async () => {
-    const res = await requestPermission();
-    if (res?.granted) {
+    if (!barcodeScannerAvailable) return;
+    const { status } = await BarCodeScanner.requestPermissionsAsync();
+    if (status === 'granted') {
       setScanState('idle');
-      setScanMessage('');
+      setScanMessage('Point camera at a QR code to scan attendance.');
     } else {
       setScanState('permission-denied');
       setScanMessage('Camera permission denied. Cannot scan QR codes.');
     }
   };
+
+  if (!barcodeScannerAvailable) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG_MAIN, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#F5F5F7', fontSize: 16 }}>QR Scanner requires a development build (expo-barcode-scanner not available in Expo Go).</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -110,6 +139,8 @@ export default function QRScannerScreen() {
       />
 
       <SafeAreaView style={styles.safeArea}>
+        <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.navWrapper} />
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -149,7 +180,7 @@ export default function QRScannerScreen() {
                 <GlassCardContent style={styles.cardContent}>
                   <Text style={styles.permissionTitle}>Permission Denied</Text>
                   <Text style={styles.permissionText}>
-                    {activeMessage}
+                    {scanMessage}
                   </Text>
                   <GlassButton
                     variant="outline"
@@ -178,7 +209,7 @@ export default function QRScannerScreen() {
 
               <View style={styles.stateBanner}>
                 <View style={styles.stateDot} />
-                <Text style={styles.stateText}>{activeMessage}</Text>
+                <Text style={styles.stateText}>{scanMessage}</Text>
               </View>
 
               {processing && (
@@ -210,7 +241,7 @@ export default function QRScannerScreen() {
                 <GlassCard intensity="default" borderRadius={0} style={styles.errorCard}>
                   <GlassCardContent style={styles.errorContent}>
                     <Text style={styles.errorTitle}>Verification Failed</Text>
-                    <Text style={styles.errorText}>{activeMessage}</Text>
+                    <Text style={styles.errorText}>{scanMessage}</Text>
                     <GlassButton
                       variant="outline"
                       size="sm"
@@ -225,8 +256,9 @@ export default function QRScannerScreen() {
             </Animated.View>
           )}
         </ScrollView>
+
+        <BottomTabBar />
       </SafeAreaView>
-      <BottomTabBar />
     </View>
   );
 }
