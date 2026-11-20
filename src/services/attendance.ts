@@ -156,3 +156,4 @@ export async function fetchAttendanceData(user: AuthUser | null): Promise<Attend
     warning: calculateAttendanceWarning(DEFAULT_SUBJECTS),
   };
 }
+

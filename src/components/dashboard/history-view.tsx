@@ -145,3 +145,4 @@ const styles = StyleSheet.create({
     color: '#F87171',
   },
 });
+

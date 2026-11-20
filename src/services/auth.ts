@@ -144,12 +144,13 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     }
 
     if (data.token && data.user) {
+      const storedUser = await getUser();
       const result: AuthResult = {
         token: data.token,
         user: {
           id: String(data.user.id || data.user._id || ''),
           email: data.user.email,
-          name: data.user.name || validated.email.split('@')[0],
+          name: data.user.name || storedUser?.name || validated.email.split('@')[0],
           role: data.user.role || 'student',
         },
       };

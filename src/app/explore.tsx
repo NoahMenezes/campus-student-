@@ -7,7 +7,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
-import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle, GlassNavigation } from '@/components/glass';
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/glass';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Collapsible } from '@/components/ui/collapsible';
@@ -38,9 +38,7 @@ export default function TabTwoScreen() {
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
         {/* Animated Glass Navigation Bar */}
-        <Animated.View entering={FadeInDown.duration(600).delay(200)} style={styles.navWrapper}>
-          <GlassNavigation activeTab="explore" />
-        </Animated.View>
+        <Animated.View entering={FadeInDown.duration(600).delay(200)} style={styles.navWrapper} />
 
         <ScrollView
           style={styles.scrollView}
