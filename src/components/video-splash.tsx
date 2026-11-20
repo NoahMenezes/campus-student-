@@ -4,6 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StatusBar, StyleSheet } from 'react-native';
 
+import { isAuthenticated } from '@/services/auth';
+
 const FADE_MS = 400;
 const DURATION_FALLBACK_MS = 10000;
 
@@ -24,7 +26,13 @@ export function VideoSplashOverlay() {
     }).start(() => {
       SplashScreen.hideAsync().catch(() => {});
       setVisible(false);
-      router.replace('/login');
+      isAuthenticated().then((authed) => {
+        if (authed) {
+          router.replace('/home');
+        } else {
+          router.replace('/login');
+        }
+      });
     });
   }, [fadeAnim]);
 

@@ -1,9 +1,19 @@
-/**
- * Root index — redirects to login.
- * The actual entry screen is /login (glassmorphism).
- */
-import { Redirect } from 'expo-router';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+
+import { isAuthenticated } from '@/services/auth';
 
 export default function Root() {
-  return <Redirect href="/login" />;
+  useEffect(() => {
+    isAuthenticated().then((authed) => {
+      if (authed) {
+        router.replace('/home');
+      } else {
+        router.replace('/login');
+      }
+    });
+  }, []);
+
+  return <View style={{ flex: 1, backgroundColor: '#020408' }} />;
 }

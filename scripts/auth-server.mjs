@@ -143,6 +143,48 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && path === '/attendance') {
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        semester: 'Semester 5',
+        overallPercentage: 82,
+        attendedClasses: 46,
+        totalClasses: 56,
+        subjects: [
+          {
+            id: 'sub_dbms',
+            code: 'CS501',
+            name: 'DBMS',
+            attended: 19,
+            total: 25,
+            percentage: 76,
+            progressColor: '#F59E0B',
+          },
+          {
+            id: 'sub_os',
+            code: 'CS502',
+            name: 'Operating Systems',
+            attended: 22,
+            total: 25,
+            percentage: 88,
+            progressColor: '#10B981',
+          },
+          {
+            id: 'sub_networks',
+            code: 'CS503',
+            name: 'Networks',
+            attended: 17,
+            total: 25,
+            percentage: 68,
+            progressColor: '#EF4444',
+          },
+        ],
+      })
+    );
+    return;
+  }
+
   if (path === '/health' || path === '/') {
     res.writeHead(200);
     res.end(JSON.stringify({ status: 'ok', service: 'konnakol-auth-service', port: PORT }));
@@ -160,3 +202,4 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`   POST http://localhost:${PORT}/auth/login`);
   console.log(`   GET  http://localhost:${PORT}/health\n`);
 });
+

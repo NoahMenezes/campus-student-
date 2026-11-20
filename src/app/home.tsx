@@ -1,29 +1,96 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  GlassButton,
-  GlassCard,
-  GlassCardContent,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassView,
-} from '@/components/glass';
-import { getUser, logout, type AuthUser } from '@/services/auth';
+  AttendanceWarningCard,
+  BottomNavigation,
+  DashboardHeader,
+  DashboardTab,
+  HistoryView,
+  OverallAttendanceCard,
+  ProfileView,
+  QRView,
+  SubjectAttendanceCard,
+} from '@/components/dashboard';
+import {
+  AttendanceData,
+  fetchAttendanceData,
+} from '@/services/attendance';
+import {
+  getUser,
+  isAuthenticated,
+  logout,
+  type AuthUser,
+} from '@/services/auth';
 
 export default function HomeScreen() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const insets = useSafeAreaInsets();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceData | null>(null);
+  const [currentTab, setCurrentTab] = useState<DashboardTab>('home');
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasUnreadNotification, setHasUnreadNotification] = useState(true);
 
+  // Authentication & session check on load
   useEffect(() => {
-    getUser().then((user) => {
-      if (user) setCurrentUser(user);
-    });
+    let isMounted = true;
+
+    async function loadSessionAndData() {
+      const authed = await isAuthenticated();
+      if (!authed) {
+        router.replace('/login');
+        return;
+      }
+
+      const currentUser = await getUser();
+      if (isMounted) {
+        setUser(currentUser);
+      }
+
+      const data = await fetchAttendanceData(currentUser);
+      if (isMounted) {
+        setAttendance(data);
+      }
+    }
+
+    loadSessionAndData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    const data = await fetchAttendanceData(user);
+    setAttendance(data);
+    setRefreshing(false);
+  };
+
+  const handleNotificationPress = () => {
+    setHasUnreadNotification(false);
+    const message = attendance?.warning
+      ? `Attendance Alert:\n${attendance.warning.message}\n\nSemester 5 Mid-term evaluation starts in 2 weeks.`
+      : 'You have no urgent attendance alerts. Keep up the good attendance!';
+
+    if (Platform.OS === 'web') {
+      window.alert(`Campus Notifications\n\n${message}`);
+    } else {
+      Alert.alert('Campus Notifications', message, [{ text: 'OK' }]);
+    }
+  };
 
   const handleSignOut = async () => {
     await logout();
@@ -32,164 +99,140 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Dark forest background */}
-      <Image
-        source={require('@/assets/konnakol_background.png')}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        contentPosition="center"
-        priority="high"
-      />
-      {/* Deep cinematic overlay */}
+      <StatusBar style="light" />
+
+      {/* Vibrant Indigo -> Royal Blue -> Cyan/Blue Vertical Gradient */}
       <LinearGradient
-        colors={[
-          'rgba(2, 4, 10, 0.60)',
-          'rgba(4, 7, 14, 0.80)',
-          'rgba(2, 4, 10, 0.94)',
-        ]}
-        locations={[0, 0.4, 1]}
+        colors={['#4338CA', '#2563EB', '#0284C7']}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
-        {/* Navigation Bar: Pointed Corners */}
-        <Animated.View entering={FadeInDown.duration(400).delay(50)} style={styles.navbar}>
-          <GlassView intensity="strong" borderRadius={0} style={styles.navbarInner}>
-            <Text style={styles.navBrandText}>Konnakol</Text>
-            <View style={styles.navActions}>
-              <GlassButton
-                variant="outline"
-                size="xs"
-                onPress={handleSignOut}
-              >
-                Sign out
-              </GlassButton>
+      {/* Header Container */}
+      <View style={[styles.headerWrapper, { paddingTop: Math.max(insets.top, 16) }]}>
+        <DashboardHeader
+          userName={user?.name || 'Noah'}
+          onNotificationPress={handleNotificationPress}
+          hasUnreadNotifications={hasUnreadNotification}
+        />
+      </View>
+
+      {/* Main Scroll Content Area */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingBottom: insets.bottom + 100, // Space for floating bottom navigation
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#ffffff"
+            colors={['#ffffff']}
+          />
+        }
+      >
+        {currentTab === 'home' && (
+          <View style={styles.dashboardBody}>
+            {/* 1. Overall Attendance Glass Card */}
+            <Animated.View entering={FadeInDown.duration(600).delay(100)}>
+              <OverallAttendanceCard
+                overallPercentage={attendance?.overallPercentage ?? 82}
+                semester={attendance?.semester ?? 'Semester 5'}
+                attendedClasses={attendance?.attendedClasses ?? 46}
+                totalClasses={attendance?.totalClasses ?? 56}
+              />
+            </Animated.View>
+
+            {/* 2. Attendance Warning Glass Alert */}
+            {attendance?.warning && (
+              <Animated.View entering={FadeInUp.duration(600).delay(200)}>
+                <AttendanceWarningCard message={attendance.warning.message} />
+              </Animated.View>
+            )}
+
+            {/* 3. Individual Subject Attendance Glass Cards */}
+            <View style={styles.subjectsSection}>
+              {(attendance?.subjects || []).map((subject, index) => (
+                <Animated.View
+                  key={subject.id}
+                  entering={FadeInUp.duration(600).delay(300 + index * 100)}
+                >
+                  <SubjectAttendanceCard
+                    name={subject.name}
+                    percentage={subject.percentage}
+                    progressColor={subject.progressColor}
+                  />
+                </Animated.View>
+              ))}
             </View>
-          </GlassView>
-        </Animated.View>
+          </View>
+        )}
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <Animated.View entering={FadeInDown.duration(500).delay(120)} style={styles.hero}>
-            <Text style={styles.greetingTitle}>
-              {currentUser ? `Welcome, ${currentUser.name}` : 'Student Workspace'}
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {currentUser?.email || 'Campus academic portal'}
-            </Text>
+        {currentTab === 'qr' && (
+          <Animated.View entering={FadeInUp.duration(500)}>
+            <QRView
+              userName={user?.name || 'Student'}
+              semester={attendance?.semester || 'Semester 5'}
+            />
           </Animated.View>
+        )}
 
-          {/* Academic Modules Grid (Pointed Cards) */}
-          <Animated.View entering={FadeInUp.duration(500).delay(200)} style={styles.grid}>
-            {[
-              { code: 'SCH', title: 'Schedule', detail: 'View classes & labs' },
-              { code: 'CRS', title: 'Courses', detail: 'Syllabus & coursework' },
-              { code: 'NTC', title: 'Notices', detail: 'Official department circulars' },
-              { code: 'RES', title: 'Resources', detail: 'Library & campus tools' },
-            ].map((item) => (
-              <Pressable key={item.title} style={styles.gridItem}>
-                <GlassCard intensity="default" borderRadius={0} style={styles.gridCard}>
-                  <GlassCardContent>
-                    <View style={styles.moduleTag}>
-                      <Text style={styles.moduleTagText}>{item.code}</Text>
-                    </View>
-                    <Text style={styles.gridTitle}>{item.title}</Text>
-                    <Text style={styles.gridDetail}>{item.detail}</Text>
-                  </GlassCardContent>
-                </GlassCard>
-              </Pressable>
-            ))}
+        {currentTab === 'history' && (
+          <Animated.View entering={FadeInUp.duration(500)}>
+            <HistoryView />
           </Animated.View>
+        )}
 
-          {/* Announcements Card (Pointed) */}
-          <Animated.View entering={FadeInUp.duration(500).delay(300)}>
-            <GlassCard intensity="default" borderRadius={0} style={styles.noticeCard}>
-              <GlassCardHeader>
-                <GlassCardTitle>Academic Term Information</GlassCardTitle>
-              </GlassCardHeader>
-              <GlassCardContent>
-                <Text style={styles.noticeBody}>
-                  Course registration and schedule records are synchronized with the campus server.
-                  For queries or credential changes, reach out to your department coordinator.
-                </Text>
-              </GlassCardContent>
-            </GlassCard>
+        {currentTab === 'profile' && (
+          <Animated.View entering={FadeInUp.duration(500)}>
+            <ProfileView
+              user={user}
+              semester={attendance?.semester || 'Semester 5'}
+              onSignOut={handleSignOut}
+            />
           </Animated.View>
-        </ScrollView>
-      </SafeAreaView>
+        )}
+      </ScrollView>
+
+      {/* Floating Glass Bottom Navigation Pill */}
+      <BottomNavigation
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        bottomInset={insets.bottom}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#020408' },
-  safe: { flex: 1 },
-  scroll: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
+  root: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+  },
+  headerWrapper: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    zIndex: 10,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
-    gap: 18,
   },
-
-  /* Navbar */
-  navbar: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 6, zIndex: 10 },
-  navbarInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(8, 12, 20, 0.75)',
-    borderRadius: 0,
+  dashboardBody: {
+    gap: 16,
   },
-  navBrandText: { fontSize: 16, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 },
-  navActions: { flexDirection: 'row', alignItems: 'center' },
-
-  /* Hero */
-  hero: { paddingTop: 16, paddingBottom: 8 },
-  greetingTitle: { fontSize: 24, fontWeight: '700', color: '#ffffff', letterSpacing: -0.4 },
-  heroSubtitle: { fontSize: 13, color: 'rgba(255, 255, 255, 0.50)', marginTop: 4 },
-
-  /* Grid: Pointed Cards */
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  gridItem: { width: '48%' },
-  gridCard: {
-    backgroundColor: 'rgba(8, 12, 20, 0.75)',
-    borderColor: 'rgba(255, 255, 255, 0.10)',
-    borderRadius: 0,
-    padding: 16,
+  subjectsSection: {
+    gap: 14,
+    marginTop: 2,
   },
-  moduleTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 10,
-  },
-  moduleTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.75)',
-    letterSpacing: 0.5,
-  },
-  gridTitle: { fontSize: 15, fontWeight: '600', color: '#ffffff', marginBottom: 4 },
-  gridDetail: { fontSize: 12, color: 'rgba(255, 255, 255, 0.45)', lineHeight: 16 },
-
-  /* Notice */
-  noticeCard: {
-    backgroundColor: 'rgba(8, 12, 20, 0.75)',
-    borderColor: 'rgba(255, 255, 255, 0.10)',
-    borderRadius: 0,
-    padding: 18,
-  },
-  noticeBody: { fontSize: 13, color: 'rgba(255, 255, 255, 0.60)', lineHeight: 20 },
 });
