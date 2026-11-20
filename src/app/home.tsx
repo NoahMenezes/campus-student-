@@ -13,17 +13,17 @@ import {
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AttendanceWarningCard } from '@/components/dashboard/attendance-warning-card';
 import {
-  AttendanceWarningCard,
   BottomNavigation,
-  DashboardHeader,
-  DashboardTab,
-  HistoryView,
-  OverallAttendanceCard,
-  ProfileView,
-  QRView,
-  SubjectAttendanceCard,
-} from '@/components/dashboard';
+  type DashboardTab,
+} from '@/components/dashboard/bottom-navigation';
+import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { HistoryView } from '@/components/dashboard/history-view';
+import { OverallAttendanceCard } from '@/components/dashboard/overall-attendance-card';
+import { ProfileView } from '@/components/dashboard/profile-view';
+import { QRView } from '@/components/dashboard/qr-view';
+import { SubjectAttendanceCard } from '@/components/dashboard/subject-attendance-card';
 import {
   AttendanceData,
   fetchAttendanceData,
