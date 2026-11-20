@@ -256,9 +256,8 @@ export default function QRScannerScreen() {
             </Animated.View>
           )}
         </ScrollView>
-
-        <BottomTabBar />
       </SafeAreaView>
+      <BottomTabBar />
     </View>
   );
 }

@@ -36,6 +36,10 @@ export interface AuthUser {
   email: string;
   name: string;
   role?: string;
+  rollNumber?: string;
+  department?: string;
+  semester?: number;
+  academicYear?: string;
   isOfflineMode?: boolean;
 }
 
@@ -112,20 +116,28 @@ export const getApiBaseUrl = (): string => {
   return 'http://localhost:4000';
 };
 
+const request = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const token = await getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return fetch(input, { ...init, headers: { ...headers, ...(init?.headers || {}) } });
+};
+
 export async function login(input: LoginInput): Promise<AuthResult> {
   const validated = loginSchema.parse(input);
   const baseUrl = getApiBaseUrl();
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(`${baseUrl}/auth/login`, {
+  try {
+    const response = await request(`${baseUrl}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
       body: JSON.stringify({
         email: validated.email.toLowerCase(),
         password: validated.password,
@@ -138,78 +150,48 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const errorMsg =
-        data.message || data.error || 'Invalid credentials. Please verify your email and password.';
-      throw new Error(errorMsg);
+      throw new Error(data.message || data.error || 'Invalid credentials');
     }
 
-    if (data.token && data.user) {
-      const storedUser = await getUser();
-      const result: AuthResult = {
-        token: data.token,
-        user: {
-          id: String(data.user.id || data.user._id || ''),
-          email: data.user.email,
-          name: data.user.name || storedUser?.name || validated.email.split('@')[0],
-          role: data.user.role || 'student',
-        },
-      };
-      await setSession(result.token, result.user);
-      return result;
+    if (!data.token || !data.user) {
+      throw new Error('Authentication could not be completed.');
     }
-  } catch (networkErr: unknown) {
-    // If backend returned an explicit 4xx error (invalid password, etc.), surface it
-    if (
-      networkErr instanceof Error &&
-      !networkErr.message.includes('fetch') &&
-      !networkErr.message.includes('Network') &&
-      !networkErr.message.includes('abort')
-    ) {
-      throw networkErr;
-    }
-
-    // Server is unreachable/offline: Fallback to seamless local developer session
-    console.warn(
-      `[AUTH] Backend at ${baseUrl} is unreachable. Activating local student session.`
-    );
-
-    const fallbackName = validated.email
-      .split('@')[0]
-      .split('.')[0]
-      .replace(/^[a-z]/, (c) => c.toUpperCase());
 
     const result: AuthResult = {
-      token: `local_token_${Date.now()}`,
+      token: data.token,
       user: {
-        id: `usr_${Date.now()}`,
-        email: validated.email,
-        name: fallbackName || 'Student',
-        role: 'student',
-        isOfflineMode: true,
+        id: String(data.user.id || data.user._id || ''),
+        email: data.user.email,
+        name: data.user.name || validated.email.split('@')[0],
+        role: data.user.role || 'student',
+        rollNumber: data.user.rollNumber,
+        department: data.user.department,
+        semester: data.user.semester,
+        academicYear: data.user.academicYear,
       },
     };
 
     await setSession(result.token, result.user);
     return result;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection.');
+    }
+    throw err;
   }
-
-  throw new Error('Authentication could not be completed.');
 }
 
 export async function signup(input: SignupInput): Promise<AuthResult> {
   const validated = signupSchema.parse(input);
   const baseUrl = getApiBaseUrl();
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(`${baseUrl}/auth/signup`, {
+  try {
+    const response = await request(`${baseUrl}/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
       body: JSON.stringify({
         name: validated.name,
         email: validated.email.toLowerCase(),
@@ -223,56 +205,36 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const errorMsg =
-        data.message || data.error || 'Unable to create account. Please try again.';
-      throw new Error(errorMsg);
+      throw new Error(data.message || data.error || 'Registration failed');
     }
 
-    if (data.token && data.user) {
-      const result: AuthResult = {
-        token: data.token,
-        user: {
-          id: String(data.user.id || data.user._id || ''),
-          email: data.user.email,
-          name: data.user.name || validated.name,
-          role: data.user.role || 'student',
-        },
-      };
-      await setSession(result.token, result.user);
-      return result;
+    if (!data.token || !data.user) {
+      throw new Error('Registration could not be completed.');
     }
-  } catch (networkErr: unknown) {
-    // If backend returned an explicit 4xx business logic error, rethrow
-    if (
-      networkErr instanceof Error &&
-      !networkErr.message.includes('fetch') &&
-      !networkErr.message.includes('Network') &&
-      !networkErr.message.includes('abort')
-    ) {
-      throw networkErr;
-    }
-
-    // Server is unreachable/offline: Fallback to seamless local developer session
-    console.warn(
-      `[AUTH] Backend at ${baseUrl} is unreachable. Creating local student session.`
-    );
 
     const result: AuthResult = {
-      token: `local_token_${Date.now()}`,
+      token: data.token,
       user: {
-        id: `usr_${Date.now()}`,
-        email: validated.email,
-        name: validated.name,
-        role: 'student',
-        isOfflineMode: true,
+        id: String(data.user.id || data.user._id || ''),
+        email: data.user.email,
+        name: data.user.name || validated.name,
+        role: data.user.role || 'student',
+        rollNumber: data.user.rollNumber,
+        department: data.user.department,
+        semester: data.user.semester,
+        academicYear: data.user.academicYear,
       },
     };
 
     await setSession(result.token, result.user);
     return result;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection.');
+    }
+    throw err;
   }
-
-  throw new Error('Registration could not be completed.');
 }
 
 export async function logout(): Promise<void> {

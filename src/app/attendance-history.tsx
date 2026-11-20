@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -15,83 +15,95 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { GlassButton } from '@/components/glass/glass-button';
 import { GlassCard, GlassCardContent } from '@/components/glass/glass-card';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
+import { fetchAttendanceHistory } from '@/services/attendance';
+import { ThemeColors } from '@/constants/colors';
 
-const BG_MAIN = '#090A0C';
-const BRAND = '#A0A7B1';
-const SAGE = '#8A9A7B';
-const DUSTY_RED = '#B55A5A';
-const AMBER = '#C9A227';
-
-type HistoryRecord = {
-  id: string;
-  subject: string;
-  code: string;
-  date: string;
-  status: 'present' | 'absent' | 'late';
-  time?: string;
-};
+const BG_MAIN = '#0A0B10';
 
 type Filter = 'all' | 'present' | 'absent';
 
-const DEFAULT_HISTORY: HistoryRecord[] = [
-  { id: 'h1', subject: 'DBMS', code: 'CS501', date: '2025-11-18', status: 'present', time: '09:00 AM' },
-  { id: 'h2', subject: 'Operating Systems', code: 'CS502', date: '2025-11-17', status: 'present', time: '10:30 AM' },
-  { id: 'h3', subject: 'Networks', code: 'CS503', date: '2025-11-16', status: 'absent', time: '02:00 PM' },
-  { id: 'h4', subject: 'DBMS', code: 'CS501', date: '2025-11-15', status: 'present', time: '09:00 AM' },
-  { id: 'h5', subject: 'Networks', code: 'CS503', date: '2025-11-14', status: 'present', time: '02:00 PM' },
-  { id: 'h6', subject: 'Operating Systems', code: 'CS502', date: '2025-11-13', status: 'absent', time: '10:30 AM' },
-  { id: 'h7', subject: 'DBMS', code: 'CS501', date: '2025-11-12', status: 'present', time: '09:00 AM' },
-];
-
 export default function AttendanceHistoryScreen() {
-  const [records, setRecords] = useState<HistoryRecord[]>([]);
+  const [records, setRecords] = useState<any[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
-        const res = await fetch(`${baseUrl}/attendance/history`, {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-        });
-        if (mounted && res.ok) {
-          const data = await res.json();
-          setRecords(data.records || DEFAULT_HISTORY);
-        } else if (mounted) {
-          setRecords(DEFAULT_HISTORY);
-        }
-      } catch {
-        if (mounted) setRecords(DEFAULT_HISTORY);
-      } finally {
-        if (mounted) setLoading(false);
-        if (mounted) setRefreshing(false);
-      }
-    })();
-    return () => {
-      // noop
-    };
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setRefreshing(false);
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAttendanceHistory(filter === 'all' ? undefined : filter);
+      setRecords(data);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load attendance history');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchAttendanceHistory(filter === 'all' ? undefined : filter);
+        if (mounted) {
+          setRecords(data);
+        }
+      } catch (err: unknown) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load attendance history');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    };
+    loadData();
+    return () => {
+      mounted = false;
+    };
+  }, [filter]);
+
   const filtered = records.filter((r) => {
-    if (filter === 'present') return r.status === 'present';
-    if (filter === 'absent') return r.status === 'absent';
+    if (filter === 'present') return r.status === 'Present' || r.status === 'present';
+    if (filter === 'absent') return r.status === 'Absent' || r.status === 'absent';
     return true;
   });
 
   const total = records.length;
-  const presentCount = records.filter((r) => r.status === 'present').length;
-  const absentCount = records.filter((r) => r.status === 'absent').length;
+  const presentCount = records.filter((r) => r.status === 'Present' || r.status === 'present').length;
+  const absentCount = records.filter((r) => r.status === 'Absent' || r.status === 'absent').length;
   const pct = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+
+  if (error && !loading) {
+    return (
+      <View style={styles.root}>
+        <Image
+          source={require('@/assets/konnakol_background.png')}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          contentPosition="center"
+        />
+        <LinearGradient
+          colors={['rgba(9,10,12,0.45)', 'rgba(16,18,22,0.75)', 'rgba(9,10,12,0.94)']}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -116,7 +128,7 @@ export default function AttendanceHistoryScreen() {
             <RefreshControl
               refreshing={refreshing || loading}
               onRefresh={handleRefresh}
-              tintColor="#0052FF"
+              tintColor="#2583E8"
             />
           }
         >
@@ -144,19 +156,19 @@ export default function AttendanceHistoryScreen() {
                 </GlassCard>
                 <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
                   <GlassCardContent style={styles.statContent}>
-                    <Text style={[styles.statValue, { color: SAGE }]}>{presentCount}</Text>
+                    <Text style={[styles.statValue, { color: ThemeColors.dark.success }]}>{presentCount}</Text>
                     <Text style={styles.statLabel}>Present</Text>
                   </GlassCardContent>
                 </GlassCard>
                 <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
                   <GlassCardContent style={styles.statContent}>
-                    <Text style={[styles.statValue, { color: DUSTY_RED }]}>{absentCount}</Text>
+                    <Text style={[styles.statValue, { color: ThemeColors.dark.danger }]}>{absentCount}</Text>
                     <Text style={styles.statLabel}>Absent</Text>
                   </GlassCardContent>
                 </GlassCard>
                 <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
                   <GlassCardContent style={styles.statContent}>
-                    <Text style={[styles.statValue, { color: BRAND }]}>{pct}%</Text>
+                    <Text style={[styles.statValue, { color: ThemeColors.dark.accent }]}>{pct}%</Text>
                     <Text style={styles.statLabel}>Attendance</Text>
                   </GlassCardContent>
                 </GlassCard>
@@ -192,9 +204,9 @@ export default function AttendanceHistoryScreen() {
                   filtered.map((record) => (
                     <View key={record.id} style={styles.recordRow}>
                       <View style={styles.recordInfo}>
-                        <Text style={styles.recordSubject}>{record.subject}</Text>
+                        <Text style={styles.recordSubject}>{record.subject || 'Unknown'}</Text>
                         <Text style={styles.recordMeta}>
-                          {record.code} &bull; {formatDate(record.date)} &bull; {record.time || ''}
+                          {record.code || '—'} &bull; {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} &bull; {record.time || ''}
                         </Text>
                       </View>
                       <View style={styles.recordStatus}>
@@ -212,21 +224,18 @@ export default function AttendanceHistoryScreen() {
             </>
           )}
         </ScrollView>
+
+        <BottomTabBar />
       </SafeAreaView>
-      <BottomTabBar />
     </View>
   );
 }
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
 function getStatusColor(status: string) {
-  if (status === 'present') return SAGE;
-  if (status === 'absent') return DUSTY_RED;
-  return AMBER;
+  const s = status.toLowerCase();
+  if (s === 'present') return ThemeColors.dark.success;
+  if (s === 'absent') return ThemeColors.dark.danger;
+  return ThemeColors.dark.warning;
 }
 
 const styles = StyleSheet.create({
@@ -242,11 +251,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  navWrapper: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 10,
-    zIndex: 20,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: ThemeColors.dark.danger,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
@@ -264,12 +278,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#F0F0F0',
+    color: '#F5F5F7',
     letterSpacing: -0.4,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.60)',
+    color: 'rgba(245,245,247,0.60)',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -279,6 +293,9 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     borderRadius: 0,
+    backgroundColor: ThemeColors.dark.surface,
+    borderWidth: 1,
+    borderColor: ThemeColors.dark.border,
   },
   statContent: {
     padding: 16,
@@ -287,12 +304,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#F0F0F0',
+    color: '#F5F5F7',
     letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(245,245,247,0.55)',
     letterSpacing: 0.2,
   },
   filterRow: {
@@ -304,7 +321,7 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.70)',
+    color: 'rgba(245,245,247,0.70)',
   },
   filterGroup: {
     flexDirection: 'row',
@@ -316,7 +333,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.70)',
+    color: 'rgba(245,245,247,0.70)',
     marginBottom: 12,
     letterSpacing: 0.3,
   },
@@ -326,7 +343,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(245,245,247,0.50)',
   },
   recordRow: {
     flexDirection: 'row',
@@ -334,7 +351,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(245,245,247,0.06)',
   },
   recordInfo: {
     flex: 1,
@@ -342,11 +359,11 @@ const styles = StyleSheet.create({
   recordSubject: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F0F0F0',
+    color: '#F5F5F7',
   },
   recordMeta: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(245,245,247,0.55)',
     marginTop: 2,
   },
   recordStatus: {

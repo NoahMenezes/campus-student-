@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ThemeColors } from '@/constants/colors';
+import { fetchAttendanceHistory } from '@/services/attendance';
 
 const BG_MAIN = '#0A0B10';
 
@@ -16,10 +17,9 @@ type DayStatus = 'present' | 'absent' | 'holiday' | 'none';
 interface CalendarDay {
   date: number;
   status: DayStatus;
-  subject?: string;
 }
 
-const generateMonthDays = (): CalendarDay[] => {
+const generateEmptyCalendar = (): CalendarDay[] => {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -29,36 +29,112 @@ const generateMonthDays = (): CalendarDay[] => {
   const days: CalendarDay[] = [];
   for (let i = 0; i < firstDay; i++) days.push({ date: 0, status: 'none' });
   for (let d = 1; d <= daysInMonth; d++) {
-    const dayOfWeek = new Date(year, month, d).getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    days.push({
-      date: d,
-      status: isWeekend ? 'holiday' : d % 5 === 0 ? 'absent' : d % 3 === 0 ? 'present' : 'none',
-      subject: d % 3 === 0 ? 'Database Management Systems' : undefined,
-    });
+    days.push({ date: d, status: 'none' });
   }
   return days;
 };
 
+const statusColors: Record<DayStatus, string> = {
+  present: ThemeColors.dark.success,
+  absent: ThemeColors.dark.danger,
+  holiday: ThemeColors.dark.textMuted,
+  none: ThemeColors.dark.border,
+};
+
+const statusLabels: Record<DayStatus, string> = {
+  present: 'Present',
+  absent: 'Absent',
+  holiday: 'Holiday',
+  none: '—',
+};
+
 export default function CalendarScreen() {
+  const [days, setDays] = useState<CalendarDay[]>(generateEmptyCalendar());
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
-  const days = generateMonthDays();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const now = new Date();
   const currentDay = now.getDate();
 
-  const statusColors: Record<DayStatus, string> = {
-    present: ThemeColors.dark.success,
-    absent: ThemeColors.dark.danger,
-    holiday: ThemeColors.dark.textMuted,
-    none: ThemeColors.dark.border,
-  };
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      try {
+        const records = await fetchAttendanceHistory();
+        if (mounted) {
+          const dayMap = new Map<number, DayStatus>();
+          records.forEach((r) => {
+            const d = new Date(r.date);
+            const dayNum = d.getDate();
+            const status = r.status === 'Present' ? 'present' : r.status === 'Absent' ? 'absent' : 'none';
+            dayMap.set(dayNum, status);
+          });
 
-  const statusLabels: Record<DayStatus, string> = {
-    present: 'Present',
-    absent: 'Absent',
-    holiday: 'Holiday',
-    none: '—',
-  };
+          setDays((prev) =>
+            prev.map((d) => ({
+              ...d,
+              status: d.date !== 0 && dayMap.has(d.date) ? dayMap.get(d.date)! : 'none',
+            }))
+          );
+          setLoading(false);
+        }
+      } catch (err: unknown) {
+        if (mounted) {
+          setLoading(false);
+          setError(err instanceof Error ? err.message : 'Failed to load calendar data');
+        }
+      }
+    };
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <Image
+          source={require('@/assets/konnakol_background.png')}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          contentPosition="center"
+        />
+        <LinearGradient
+          colors={['rgba(10,11,16,0.55)', 'rgba(24,27,36,0.85)', 'rgba(10,11,16,0.96)']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingCenter}>
+            <Text style={styles.loadingText}>Loading calendar...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.root}>
+        <Image
+          source={require('@/assets/konnakol_background.png')}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          contentPosition="center"
+        />
+        <LinearGradient
+          colors={['rgba(10,11,16,0.55)', 'rgba(24,27,36,0.85)', 'rgba(10,11,16,0.96)']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  const dayEntry = days.find((d) => d.date === selectedDate);
 
   return (
     <View style={styles.root}>
@@ -148,26 +224,17 @@ export default function CalendarScreen() {
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Status</Text>
                 <View style={styles.detailStatusRow}>
-                  <View style={[styles.statusDot, { backgroundColor: statusColors[days.find((d) => d.date === selectedDate)?.status || 'none'] }]} />
+                  <View style={[styles.statusDot, { backgroundColor: statusColors[dayEntry?.status || 'none'] }]} />
                   <Text style={styles.detailValue}>
-                    {statusLabels[days.find((d) => d.date === selectedDate)?.status || 'none']}
+                    {statusLabels[dayEntry?.status || 'none']}
                   </Text>
                 </View>
               </View>
-              {days.find((d) => d.date === selectedDate)?.subject && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Subject</Text>
-                  <Text style={styles.detailValue}>
-                    {days.find((d) => d.date === selectedDate)?.subject}
-                  </Text>
-                </View>
-              )}
             </View>
           )}
         </ScrollView>
-
-        <BottomTabBar />
       </SafeAreaView>
+      <BottomTabBar />
     </View>
   );
 }
@@ -265,9 +332,6 @@ const styles = StyleSheet.create({
   todayNumber: {
     color: ThemeColors.dark.accent,
   },
-  selectedNumber: {
-    color: '#ffffff',
-  },
   statusDot: {
     width: 6,
     height: 6,
@@ -310,5 +374,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  loadingCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#F5F5F7',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: ThemeColors.dark.danger,
+    textAlign: 'center',
   },
 });
