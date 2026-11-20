@@ -16,10 +16,9 @@ export interface GlassNavigationProps {
 
 export function GlassNavigation({ activeTab = 'home', style }: GlassNavigationProps) {
   return (
-    <GlassView intensity="strong" borderRadius={24} style={[styles.navbar, style]}>
+    <GlassView intensity="strong" borderRadius={0} style={[styles.navbar, style]}>
       <View style={styles.brandContainer}>
-        <View style={styles.brandGlowDot} />
-        <Text style={styles.brandText}>Expo Starter</Text>
+        <Text style={styles.brandText}>Konnakol</Text>
       </View>
 
       <GlassButtonGroup variant="subtle" style={styles.navGroup}>
@@ -63,36 +62,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
+    borderRadius: 0,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  brandGlowDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#38bdf8',
-    shadowColor: '#38bdf8',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    elevation: 4,
-  },
   brandText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#ffffff',
-    letterSpacing: 0.3,
+    letterSpacing: -0.2,
   },
   navGroup: {
     padding: 2,
+    borderRadius: 0,
   },
   docsButtonContent: {
     flexDirection: 'row',

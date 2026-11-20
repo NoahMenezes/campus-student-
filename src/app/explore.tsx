@@ -50,13 +50,13 @@ export default function TabTwoScreen() {
           <Animated.View entering={FadeInDown.duration(700).delay(300)} style={styles.titleContainer}>
             <Text style={styles.headerTitle}>Explore</Text>
             <Text style={styles.centerText}>
-              This starter app includes example code to help you get started.
+              This student portal includes documentation and resources for campus development.
             </Text>
 
             <ExternalLink href="https://docs.expo.dev" asChild>
               <Pressable style={({ pressed }) => pressed && styles.pressed}>
                 <View style={styles.linkButton}>
-                  <Text style={styles.linkText}>Expo documentation</Text>
+                  <Text style={styles.linkText}>Documentation</Text>
                   <SymbolView
                     tintColor="#93c5fd"
                     name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
@@ -68,15 +68,15 @@ export default function TabTwoScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInUp.duration(700).delay(450)} style={styles.sectionsWrapper}>
-            <GlassCard intensity="default" borderRadius={20} style={styles.glassSection}>
+            <GlassCard intensity="default" borderRadius={0} style={styles.glassSection}>
               <GlassCardHeader>
                 <GlassCardTitle>Features &amp; Architecture</GlassCardTitle>
               </GlassCardHeader>
               <GlassCardContent style={styles.collapsibleList}>
                 <Collapsible title="File-based routing">
                   <ThemedText type="small">
-                    This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-                    <ThemedText type="code">src/app/explore.tsx</ThemedText>
+                    This app has active screens for authentication and workspace under{' '}
+                    <ThemedText type="code">src/app/</ThemedText>.
                   </ThemedText>
                   <ThemedText type="small">
                     The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
@@ -90,34 +90,15 @@ export default function TabTwoScreen() {
                 <Collapsible title="Android, iOS, and web support">
                   <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
                     <ThemedText type="small">
-                      You can open this project on Android, iOS, and the web. To open the web version,
-                      press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                      project.
+                      Cross-platform compatibility for Android, iOS, and Web.
                     </ThemedText>
-                    <Image
-                      source={require('@/assets/images/tutorial-web.png')}
-                      style={styles.imageTutorial}
-                    />
                   </ThemedView>
                 </Collapsible>
 
-                <Collapsible title="Images">
+                <Collapsible title="Dark aesthetic &amp; architectural geometry">
                   <ThemedText type="small">
-                    For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-                    <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-                    screen densities.
-                  </ThemedText>
-                  <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-                  <ExternalLink href="https://reactnative.dev/docs/images">
-                    <ThemedText type="linkPrimary">Learn more</ThemedText>
-                  </ExternalLink>
-                </Collapsible>
-
-                <Collapsible title="Dark aesthetic &amp; Liquid glass">
-                  <ThemedText type="small">
-                    This screen uses glassmorphism components powered by{' '}
-                    <ThemedText type="code">expo-blur</ThemedText> and custom GlassCN design tokens
-                    with dark forest background photography.
+                    Pointed edge glass components with dark forest background photography and high-contrast
+                    controls.
                   </ThemedText>
                 </Collapsible>
               </GlassCardContent>
@@ -179,13 +160,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
+    borderRadius: 0,
     justifyContent: 'center',
     gap: Spacing.two,
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(0, 82, 255, 0.20)',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.35)',
+    borderColor: 'rgba(0, 82, 255, 0.45)',
     marginTop: Spacing.two,
   },
   linkText: {
@@ -197,7 +178,8 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   glassSection: {
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    borderRadius: 0,
   },
   collapsibleList: {
     gap: Spacing.three,
@@ -206,18 +188,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.two,
     padding: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 80,
-    height: 80,
-    alignSelf: 'center',
-    marginVertical: Spacing.two,
+    borderRadius: 0,
   },
 });

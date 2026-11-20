@@ -77,8 +77,8 @@ export default function SignupScreen() {
       <LinearGradient
         colors={[
           'rgba(2, 4, 8, 0.60)',
-          'rgba(4, 7, 14, 0.78)',
-          'rgba(2, 4, 10, 0.92)',
+          'rgba(4, 7, 14, 0.80)',
+          'rgba(2, 4, 10, 0.94)',
         ]}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
@@ -96,15 +96,15 @@ export default function SignupScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Header */}
-            <Animated.View entering={FadeInDown.duration(600).delay(80)} style={styles.header}>
+            {/* Header: Architectural Typographic Branding */}
+            <Animated.View entering={FadeInDown.duration(500).delay(50)} style={styles.header}>
               <Text style={styles.brandTitle}>Konnakol</Text>
               <Text style={styles.brandSubtitle}>Student Registration</Text>
             </Animated.View>
 
-            {/* Registration Card */}
-            <Animated.View entering={FadeInUp.duration(600).delay(180)} style={styles.cardContainer}>
-              <GlassCard intensity="default" borderRadius={24} style={styles.card}>
+            {/* Registration Card: Pointed borders (borderRadius: 0) */}
+            <Animated.View entering={FadeInUp.duration(500).delay(150)} style={styles.cardContainer}>
+              <GlassCard intensity="default" borderRadius={0} style={styles.card}>
                 <GlassCardContent>
                   <View style={styles.cardHeader}>
                     <Text style={styles.formTitle}>Create account</Text>
@@ -113,7 +113,7 @@ export default function SignupScreen() {
                     </Text>
                   </View>
 
-                  {/* Inline Error Banner */}
+                  {/* Pointed Inline Error Banner */}
                   {errorMessage ? (
                     <View style={styles.errorBanner}>
                       <Text style={styles.errorText}>{errorMessage}</Text>
@@ -197,6 +197,7 @@ export default function SignupScreen() {
                     </View>
                   </View>
 
+                  {/* Strong Color Primary Button: Sharp Pointed Corners */}
                   <View style={styles.actionBlock}>
                     <GlassButton
                       variant="default"
@@ -231,7 +232,7 @@ export default function SignupScreen() {
             </Animated.View>
 
             {/* Bottom Note */}
-            <Animated.View entering={FadeIn.duration(500).delay(300)} style={styles.systemNote}>
+            <Animated.View entering={FadeIn.duration(400).delay(250)} style={styles.systemNote}>
               <Text style={styles.systemNoteText}>
                 Konnakol Campus System
               </Text>
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     paddingVertical: 32,
     justifyContent: 'center',
     maxWidth: 440,
@@ -290,18 +291,20 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    backgroundColor: 'rgba(8, 12, 20, 0.70)',
-    borderColor: 'rgba(255, 255, 255, 0.10)',
-    borderTopColor: 'rgba(255, 255, 255, 0.20)',
+    borderRadius: 0,
+    backgroundColor: 'rgba(8, 12, 20, 0.75)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderTopColor: 'rgba(255, 255, 255, 0.22)',
+    padding: 22,
   },
   cardHeader: {
     marginBottom: 20,
   },
   formTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ffffff',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   formCaption: {
     fontSize: 13,
@@ -310,12 +313,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  /* Error Banner */
+  /* Error Banner: Pointed borders */
   errorBanner: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
-    borderRadius: 12,
+    borderColor: 'rgba(239, 68, 68, 0.40)',
+    borderRadius: 0,
     paddingVertical: 10,
     paddingHorizontal: 14,
     marginBottom: 16,
@@ -347,20 +350,20 @@ const styles = StyleSheet.create({
   passwordToggleText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.60)',
+    color: 'rgba(255, 255, 255, 0.65)',
     paddingHorizontal: 4,
   },
 
-  /* Action */
+  /* Action: Strong Color Button, Pointed Corners */
   actionBlock: {
     marginTop: 4,
     marginBottom: 18,
   },
   submitButton: {
     width: '100%',
-    backgroundColor: 'rgba(32, 138, 239, 0.85)',
-    borderColor: 'rgba(56, 189, 248, 0.50)',
-    borderTopColor: 'rgba(255, 255, 255, 0.40)',
+    backgroundColor: '#0052FF',
+    borderColor: '#387BFF',
+    borderRadius: 0,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -371,7 +374,7 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#ffffff',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   /* Footer Links */
@@ -388,7 +391,7 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#38bdf8',
   },
 

@@ -57,7 +57,7 @@ export function GlassInput({
       ]}
     >
       <BlurView
-        intensity={40}
+        intensity={35}
         tint="dark"
         style={[StyleSheet.absoluteFill, styles.blur]}
       />
@@ -81,9 +81,13 @@ export function GlassInput({
           editable={editable}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={[styles.input, leftIcon ? styles.inputWithLeft : null, rightIcon ? styles.inputWithRight : null]}
-          selectionColor="rgba(56,189,248,0.8)"
-          cursorColor="#38bdf8"
+          style={[
+            styles.input,
+            leftIcon ? styles.inputWithLeft : null,
+            rightIcon ? styles.inputWithRight : null,
+          ]}
+          selectionColor="#0052FF"
+          cursorColor="#0052FF"
         />
 
         {rightIcon && (
@@ -102,31 +106,29 @@ export function GlassInput({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderTopColor: 'rgba(255,255,255,0.20)',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderTopColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(8, 12, 20, 0.70)',
     overflow: 'hidden',
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 3,
   },
   containerFocused: {
-    borderColor: 'rgba(56,189,248,0.45)',
-    borderTopColor: 'rgba(56,189,248,0.6)',
-    backgroundColor: 'rgba(56,189,248,0.07)',
-    shadowColor: '#38bdf8',
-    shadowOpacity: 0.25,
+    borderColor: '#0052FF',
+    borderTopColor: '#387BFF',
+    backgroundColor: 'rgba(0, 82, 255, 0.08)',
   },
   containerDisabled: {
     opacity: 0.5,
   },
   blur: {
-    borderRadius: 16,
+    borderRadius: 0,
   },
   highlight: {
     position: 'absolute',
@@ -134,15 +136,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     zIndex: 2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 3,
-    minHeight: 52,
-    paddingHorizontal: 16,
+    minHeight: 48,
+    paddingHorizontal: 14,
   },
   leftIconWrapper: {
     marginRight: 10,
@@ -150,15 +152,14 @@ const styles = StyleSheet.create({
   },
   rightIconWrapper: {
     marginLeft: 10,
-    opacity: 0.75,
+    opacity: 0.85,
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     color: '#ffffff',
     fontWeight: '400',
     paddingVertical: Platform.OS === 'ios' ? 14 : 12,
-    // Prevent default web outline — cast needed because RN types don't expose outlineWidth
     ...(Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none' } as object) : {}),
   },
   inputWithLeft: {

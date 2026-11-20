@@ -22,14 +22,14 @@ const INTENSITY_VALUES: Record<GlassIntensity, number> = {
 
 const BACKGROUND_COLORS: Record<GlassIntensity, string> = {
   subtle: 'rgba(15, 23, 42, 0.40)',
-  default: 'rgba(15, 23, 42, 0.60)',
-  strong: 'rgba(10, 15, 30, 0.75)',
+  default: 'rgba(10, 14, 24, 0.70)',
+  strong: 'rgba(8, 12, 20, 0.85)',
 };
 
 export function GlassView({
   intensity = 'default',
   variant = 'material',
-  borderRadius = 18,
+  borderRadius = 0,
   borderWidth = 1,
   style,
   children,
@@ -77,10 +77,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
   highlight: {
     position: 'absolute',
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
   },
   content: {
     zIndex: 1,

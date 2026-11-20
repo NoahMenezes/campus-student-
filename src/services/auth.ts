@@ -216,3 +216,4 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
 export async function logout(): Promise<void> {
   await clearSession();
 }
+

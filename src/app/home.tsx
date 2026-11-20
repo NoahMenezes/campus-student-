@@ -44,7 +44,7 @@ export default function HomeScreen() {
       <LinearGradient
         colors={[
           'rgba(2, 4, 10, 0.60)',
-          'rgba(4, 7, 14, 0.78)',
+          'rgba(4, 7, 14, 0.80)',
           'rgba(2, 4, 10, 0.94)',
         ]}
         locations={[0, 0.4, 1]}
@@ -52,9 +52,9 @@ export default function HomeScreen() {
       />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
-        {/* Navigation Bar */}
-        <Animated.View entering={FadeInDown.duration(500).delay(50)} style={styles.navbar}>
-          <GlassView intensity="strong" borderRadius={18} style={styles.navbarInner}>
+        {/* Navigation Bar: Pointed Corners */}
+        <Animated.View entering={FadeInDown.duration(400).delay(50)} style={styles.navbar}>
+          <GlassView intensity="strong" borderRadius={0} style={styles.navbarInner}>
             <Text style={styles.navBrandText}>Konnakol</Text>
             <View style={styles.navActions}>
               <GlassButton
@@ -74,7 +74,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <Animated.View entering={FadeInDown.duration(600).delay(150)} style={styles.hero}>
+          <Animated.View entering={FadeInDown.duration(500).delay(120)} style={styles.hero}>
             <Text style={styles.greetingTitle}>
               {currentUser ? `Welcome, ${currentUser.name}` : 'Student Workspace'}
             </Text>
@@ -83,8 +83,8 @@ export default function HomeScreen() {
             </Text>
           </Animated.View>
 
-          {/* Academic Modules Grid (No Emojis) */}
-          <Animated.View entering={FadeInUp.duration(600).delay(250)} style={styles.grid}>
+          {/* Academic Modules Grid (Pointed Cards) */}
+          <Animated.View entering={FadeInUp.duration(500).delay(200)} style={styles.grid}>
             {[
               { code: 'SCH', title: 'Schedule', detail: 'View classes & labs' },
               { code: 'CRS', title: 'Courses', detail: 'Syllabus & coursework' },
@@ -92,7 +92,7 @@ export default function HomeScreen() {
               { code: 'RES', title: 'Resources', detail: 'Library & campus tools' },
             ].map((item) => (
               <Pressable key={item.title} style={styles.gridItem}>
-                <GlassCard intensity="default" borderRadius={18} style={styles.gridCard}>
+                <GlassCard intensity="default" borderRadius={0} style={styles.gridCard}>
                   <GlassCardContent>
                     <View style={styles.moduleTag}>
                       <Text style={styles.moduleTagText}>{item.code}</Text>
@@ -105,9 +105,9 @@ export default function HomeScreen() {
             ))}
           </Animated.View>
 
-          {/* Announcements Card */}
-          <Animated.View entering={FadeInUp.duration(600).delay(350)}>
-            <GlassCard intensity="default" borderRadius={20} style={styles.noticeCard}>
+          {/* Announcements Card (Pointed) */}
+          <Animated.View entering={FadeInUp.duration(500).delay(300)}>
+            <GlassCard intensity="default" borderRadius={0} style={styles.noticeCard}>
               <GlassCardHeader>
                 <GlassCardTitle>Academic Term Information</GlassCardTitle>
               </GlassCardHeader>
@@ -146,8 +146,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(8, 12, 20, 0.65)',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(8, 12, 20, 0.75)',
+    borderRadius: 0,
   },
   navBrandText: { fontSize: 16, fontWeight: '700', color: '#ffffff', letterSpacing: -0.3 },
   navActions: { flexDirection: 'row', alignItems: 'center' },
@@ -157,18 +158,20 @@ const styles = StyleSheet.create({
   greetingTitle: { fontSize: 24, fontWeight: '700', color: '#ffffff', letterSpacing: -0.4 },
   heroSubtitle: { fontSize: 13, color: 'rgba(255, 255, 255, 0.50)', marginTop: 4 },
 
-  /* Grid */
+  /* Grid: Pointed Cards */
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   gridItem: { width: '48%' },
   gridCard: {
-    backgroundColor: 'rgba(8, 12, 20, 0.70)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(8, 12, 20, 0.75)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    borderRadius: 0,
+    padding: 16,
   },
   moduleTag: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginBottom: 10,
   },
@@ -183,8 +186,10 @@ const styles = StyleSheet.create({
 
   /* Notice */
   noticeCard: {
-    backgroundColor: 'rgba(8, 12, 20, 0.70)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(8, 12, 20, 0.75)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    borderRadius: 0,
+    padding: 18,
   },
   noticeBody: { fontSize: 13, color: 'rgba(255, 255, 255, 0.60)', lineHeight: 20 },
 });

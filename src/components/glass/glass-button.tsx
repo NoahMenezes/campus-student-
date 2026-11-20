@@ -62,7 +62,7 @@ export function GlassButton({
       {variant === 'glass' && !active ? (
         <GlassView
           intensity="subtle"
-          borderRadius={sizeStyle.radius}
+          borderRadius={0}
           style={[StyleSheet.absoluteFill, styles.glassFill]}
         />
       ) : null}
@@ -80,69 +80,75 @@ export function GlassButton({
 
 const SIZES = {
   xs: {
-    container: { height: 28, paddingHorizontal: 10, borderRadius: 14 } as ViewStyle,
-    text: { fontSize: 11, fontWeight: '500' } as TextStyle,
-    radius: 14,
+    container: { height: 30, paddingHorizontal: 12, borderRadius: 0 } as ViewStyle,
+    text: { fontSize: 12, fontWeight: '600' } as TextStyle,
+    radius: 0,
   },
   sm: {
-    container: { height: 34, paddingHorizontal: 14, borderRadius: 17 } as ViewStyle,
-    text: { fontSize: 13, fontWeight: '500' } as TextStyle,
-    radius: 17,
+    container: { height: 36, paddingHorizontal: 16, borderRadius: 0 } as ViewStyle,
+    text: { fontSize: 13, fontWeight: '600' } as TextStyle,
+    radius: 0,
   },
   default: {
-    container: { height: 42, paddingHorizontal: 18, borderRadius: 21 } as ViewStyle,
-    text: { fontSize: 14, fontWeight: '600' } as TextStyle,
-    radius: 21,
+    container: { height: 46, paddingHorizontal: 20, borderRadius: 0 } as ViewStyle,
+    text: { fontSize: 15, fontWeight: '700' } as TextStyle,
+    radius: 0,
   },
   lg: {
-    container: { height: 50, paddingHorizontal: 24, borderRadius: 25 } as ViewStyle,
-    text: { fontSize: 16, fontWeight: '600' } as TextStyle,
-    radius: 25,
+    container: { height: 52, paddingHorizontal: 24, borderRadius: 0 } as ViewStyle,
+    text: { fontSize: 16, fontWeight: '700' } as TextStyle,
+    radius: 0,
   },
   icon: {
-    container: { width: 38, height: 38, paddingHorizontal: 0, borderRadius: 19 } as ViewStyle,
+    container: { width: 40, height: 40, paddingHorizontal: 0, borderRadius: 0 } as ViewStyle,
     text: { fontSize: 14 } as TextStyle,
-    radius: 19,
+    radius: 0,
   },
 };
 
 const VARIANTS: Record<GlassButtonVariant | 'active', ViewStyle> = {
+  // Strong color primary button: high-impact vivid blue with sharp pointed corners
+  default: {
+    backgroundColor: '#0052FF',
+    borderWidth: 1,
+    borderColor: '#387BFF',
+    borderRadius: 0,
+  },
   glass: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.16)',
     borderTopColor: 'rgba(255, 255, 255, 0.28)',
-  },
-  default: {
-    backgroundColor: '#3b82f6',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 0,
   },
   tinted: {
-    backgroundColor: 'rgba(59, 130, 246, 0.20)',
+    backgroundColor: 'rgba(0, 82, 255, 0.22)',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.40)',
+    borderColor: 'rgba(0, 82, 255, 0.50)',
+    borderRadius: 0,
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.20)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    borderRadius: 0,
   },
   ghost: {
     backgroundColor: 'transparent',
     borderWidth: 0,
+    borderRadius: 0,
   },
   active: {
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: '#0043D6',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    borderTopColor: 'rgba(255, 255, 255, 0.50)',
+    borderColor: '#548DFF',
+    borderRadius: 0,
   },
 };
 
 const VARIANT_TEXT: Record<GlassButtonVariant | 'active', TextStyle> = {
+  default: { color: '#ffffff', letterSpacing: 0.3 },
   glass: { color: '#ffffff' },
-  default: { color: '#ffffff' },
   tinted: { color: '#93c5fd' },
   outline: { color: '#e2e8f0' },
   ghost: { color: '#cbd5e1' },
@@ -154,8 +160,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    overflow: 'hidden',
+    gap: 8,
+    borderRadius: 0,
   },
   iconBase: {
     alignItems: 'center',
@@ -163,15 +169,15 @@ const styles = StyleSheet.create({
   },
   glassFill: {
     pointerEvents: 'none',
+    borderRadius: 0,
   },
   pressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.97 }],
+    opacity: 0.88,
   },
   disabled: {
-    opacity: 0.4,
+    opacity: 0.45,
   },
   text: {
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 });

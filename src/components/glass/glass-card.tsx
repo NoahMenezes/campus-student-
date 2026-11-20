@@ -14,7 +14,7 @@ export interface GlassCardProps extends ViewProps {
 export function GlassCard({
   intensity = 'default',
   variant = 'material',
-  borderRadius = 20,
+  borderRadius = 0,
   style,
   children,
   ...rest
@@ -78,8 +78,8 @@ export function GlassCardFooter({ style, children, ...rest }: ViewProps) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 16,
-    gap: 12,
+    padding: 20,
+    gap: 14,
   },
   header: {
     gap: 4,
@@ -88,21 +88,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   description: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.65)',
+    color: 'rgba(255, 255, 255, 0.60)',
     lineHeight: 18,
   },
   content: {
-    gap: 8,
+    gap: 10,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },

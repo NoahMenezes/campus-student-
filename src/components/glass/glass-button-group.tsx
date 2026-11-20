@@ -22,7 +22,7 @@ export function GlassButtonGroup({
   return (
     <GlassView
       intensity={variant === 'subtle' ? 'subtle' : 'default'}
-      borderRadius={24}
+      borderRadius={0}
       style={[
         styles.container,
         isHorizontal ? styles.horizontal : styles.vertical,
@@ -39,11 +39,12 @@ export function GlassButtonGroup({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 4,
+    padding: 2,
     alignSelf: 'center',
+    borderRadius: 0,
   },
   inner: {
-    gap: 4,
+    gap: 2,
     alignItems: 'center',
   },
   horizontal: {
