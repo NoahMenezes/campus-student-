@@ -34,7 +34,7 @@
         }
       ],
       "expo-secure-store",
-      "expo-barcode-scanner"
+      "expo-camera"
     ],
     "experiments": {
       "typedRoutes": true,

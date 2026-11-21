@@ -1,88 +1,60 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GlassButton } from '@/components/glass/glass-button';
-import { GlassCard, GlassCardContent } from '@/components/glass/glass-card';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
-import { fetchAttendanceHistory } from '@/services/attendance';
-import { ThemeColors } from '@/constants/colors';
+import { getAllAttendanceRecords } from '@/services/attendance-manager';
+import { AttendanceRecord } from '@/types/attendance';
 
 const BG_MAIN = '#0A0B10';
 
 type Filter = 'all' | 'present' | 'absent';
 
 export default function AttendanceHistoryScreen() {
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
+  const loadData = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchAttendanceHistory(filter === 'all' ? undefined : filter);
-      setRecords(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load attendance history');
+      const all = await getAllAttendanceRecords();
+      setRecords(all);
+    } catch (err) {
+      console.error('Failed to load records:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await fetchAttendanceHistory(filter === 'all' ? undefined : filter);
-        if (mounted) {
-          setRecords(data);
-        }
-      } catch (err: unknown) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load attendance history');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      }
-    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
-    return () => {
-      mounted = false;
-    };
-  }, [filter]);
+  }, [loadData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   const filtered = records.filter((r) => {
-    if (filter === 'present') return r.status === 'Present' || r.status === 'present';
-    if (filter === 'absent') return r.status === 'Absent' || r.status === 'absent';
-    return true;
+    if (filter === 'all') return true;
+    return r.status === filter;
   });
 
-  const total = records.length;
-  const presentCount = records.filter((r) => r.status === 'Present' || r.status === 'present').length;
-  const absentCount = records.filter((r) => r.status === 'Absent' || r.status === 'absent').length;
-  const pct = total > 0 ? Math.round((presentCount / total) * 100) : 0;
-
-  if (error && !loading) {
+  if (loading) {
     return (
       <View style={styles.root}>
         <Image
@@ -91,14 +63,9 @@ export default function AttendanceHistoryScreen() {
           contentFit="cover"
           contentPosition="center"
         />
-        <LinearGradient
-          colors={['rgba(9,10,12,0.45)', 'rgba(16,18,22,0.75)', 'rgba(9,10,12,0.94)']}
-          locations={[0, 0.45, 1]}
-          style={StyleSheet.absoluteFill}
-        />
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.loadingCenter}>
+            <ActivityIndicator size="large" color="#ffffff" />
           </View>
         </SafeAreaView>
       </View>
@@ -114,7 +81,7 @@ export default function AttendanceHistoryScreen() {
         contentPosition="center"
       />
       <LinearGradient
-        colors={['rgba(9,10,12,0.45)', 'rgba(16,18,22,0.75)', 'rgba(9,10,12,0.94)']}
+        colors={['rgba(10,11,16,0.50)', 'rgba(24,27,36,0.80)', 'rgba(10,11,16,0.96)']}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -125,117 +92,97 @@ export default function AttendanceHistoryScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing || loading}
-              onRefresh={handleRefresh}
-              tintColor="#2583E8"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
           }
         >
-          {loading && (
-            <View style={styles.loadingCenter}>
-              <ActivityIndicator size="large" color="#ffffff" />
+          {/* Header */}
+          <View style={styles.headerBlock}>
+            <Text style={styles.subTitle}>LOGGED RECORDS</Text>
+            <Text style={styles.title}>Attendance History</Text>
+          </View>
+
+          {/* Filters */}
+          <View style={styles.filterRow}>
+            <Pressable
+              onPress={() => setFilter('all')}
+              style={[styles.filterPill, filter === 'all' && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+                All ({records.length})
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFilter('present')}
+              style={[styles.filterPill, filter === 'present' && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterText, filter === 'present' && styles.filterTextActive]}>
+                Present ({records.filter((r) => r.status === 'present').length})
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFilter('absent')}
+              style={[styles.filterPill, filter === 'absent' && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterText, filter === 'absent' && styles.filterTextActive]}>
+                Absent ({records.filter((r) => r.status === 'absent').length})
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Empty state */}
+          {filtered.length === 0 && (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No Attendance Records</Text>
+              <Text style={styles.emptyDesc}>
+                Attendance starts empty. As lectures occur according to your timetable and you mark them, your history will appear here.
+              </Text>
             </View>
           )}
 
-          {!loading && (
-            <>
-              <Animated.View entering={FadeInDown.duration(600).delay(200)} style={styles.headerContainer}>
-                <Text style={styles.headerTitle}>Attendance History</Text>
-                <Text style={styles.headerSubtitle}>
-                  Chronological record of your class attendance
-                </Text>
-              </Animated.View>
-
-              <Animated.View entering={FadeInUp.duration(600).delay(300)} style={styles.summaryRow}>
-                <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
-                  <GlassCardContent style={styles.statContent}>
-                    <Text style={styles.statValue}>{total}</Text>
-                    <Text style={styles.statLabel}>Total Classes</Text>
-                  </GlassCardContent>
-                </GlassCard>
-                <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
-                  <GlassCardContent style={styles.statContent}>
-                    <Text style={[styles.statValue, { color: ThemeColors.dark.success }]}>{presentCount}</Text>
-                    <Text style={styles.statLabel}>Present</Text>
-                  </GlassCardContent>
-                </GlassCard>
-                <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
-                  <GlassCardContent style={styles.statContent}>
-                    <Text style={[styles.statValue, { color: ThemeColors.dark.danger }]}>{absentCount}</Text>
-                    <Text style={styles.statLabel}>Absent</Text>
-                  </GlassCardContent>
-                </GlassCard>
-                <GlassCard intensity="strong" borderRadius={0} style={styles.statCard}>
-                  <GlassCardContent style={styles.statContent}>
-                    <Text style={[styles.statValue, { color: ThemeColors.dark.accent }]}>{pct}%</Text>
-                    <Text style={styles.statLabel}>Attendance</Text>
-                  </GlassCardContent>
-                </GlassCard>
-              </Animated.View>
-
-              <Animated.View entering={FadeInDown.duration(600).delay(400)} style={styles.filterRow}>
-                <Text style={styles.filterLabel}>Filter</Text>
-                <View style={styles.filterGroup}>
-                  {(['all', 'present', 'absent'] as Filter[]).map((f) => (
-                    <GlassButton
-                      key={f}
-                      variant={filter === f ? 'default' : 'glass'}
-                      size="sm"
-                      active={filter === f}
-                      onPress={() => setFilter(f)}
-                    >
-                      {f.charAt(0).toUpperCase() + f.slice(1)}
-                    </GlassButton>
-                  ))}
+          {/* List */}
+          {filtered.map((r, index) => (
+            <Animated.View
+              key={r.id}
+              entering={FadeInUp.delay(index * 25).duration(250)}
+              style={[
+                styles.recordCard,
+                r.status === 'present' ? styles.recordCardPresent : styles.recordCardAbsent,
+              ]}
+            >
+              <View style={styles.recordLeft}>
+                <View style={styles.codeRow}>
+                  <Text style={styles.codeText}>{r.subjectCode}</Text>
+                  <Text style={styles.dateText}>{r.date}</Text>
                 </View>
-              </Animated.View>
-
-              <Animated.View entering={FadeInUp.duration(600).delay(500)} style={styles.recordsContainer}>
-                <Text style={styles.sectionTitle}>
-                  {filtered.length === 0 ? 'No records found' : 'Attendance Records'}
+                <Text style={styles.nameText}>{r.subjectName}</Text>
+                <Text style={styles.timeText}>
+                  Marked: {new Date(r.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
+              </View>
 
-                {filtered.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>No attendance records available.</Text>
-                  </View>
-                ) : (
-                  filtered.map((record) => (
-                    <View key={record.id} style={styles.recordRow}>
-                      <View style={styles.recordInfo}>
-                        <Text style={styles.recordSubject}>{record.subject || 'Unknown'}</Text>
-                        <Text style={styles.recordMeta}>
-                          {record.code || '—'} &bull; {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} &bull; {record.time || ''}
-                        </Text>
-                      </View>
-                      <View style={styles.recordStatus}>
-                        <View style={styles.statusDot} />
-                        <Text style={[styles.recordStatusText, { color: getStatusColor(record.status) }]}>
-                          {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </Animated.View>
-
-              <View style={styles.bottomSpacer} />
-            </>
-          )}
+              <View
+                style={[
+                  styles.badge,
+                  r.status === 'present' ? styles.badgePresent : styles.badgeAbsent,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    r.status === 'present' ? styles.badgeTextPresent : styles.badgeTextAbsent,
+                  ]}
+                >
+                  {r.status === 'present' ? 'PRESENT' : 'ABSENT'}
+                </Text>
+              </View>
+            </Animated.View>
+          ))}
         </ScrollView>
 
         <BottomTabBar />
       </SafeAreaView>
     </View>
   );
-}
-
-function getStatusColor(status: string) {
-  const s = status.toLowerCase();
-  if (s === 'present') return ThemeColors.dark.success;
-  if (s === 'absent') return ThemeColors.dark.danger;
-  return ThemeColors.dark.warning;
 }
 
 const styles = StyleSheet.create({
@@ -251,136 +198,144 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: ThemeColors.dark.danger,
-    textAlign: 'center',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 120,
-    gap: 16,
+    paddingTop: 16,
+    paddingBottom: 110,
+    gap: 12,
   },
-  headerContainer: {
-    gap: 8,
-    marginBottom: 20,
+  headerBlock: {
+    gap: 2,
   },
-  headerTitle: {
-    fontSize: 20,
+  subTitle: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  title: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#F5F5F7',
     letterSpacing: -0.4,
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: 'rgba(245,245,247,0.60)',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 0,
-    backgroundColor: ThemeColors.dark.surface,
-    borderWidth: 1,
-    borderColor: ThemeColors.dark.border,
-  },
-  statContent: {
-    padding: 16,
-    gap: 6,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#F5F5F7',
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: 'rgba(245,245,247,0.55)',
-    letterSpacing: 0.2,
-  },
   filterRow: {
     flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(20,24,30,0.6)',
+    borderRadius: 0,
+  },
+  filterPillActive: {
+    backgroundColor: '#0052FF',
+    borderColor: '#387BFF',
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  filterTextActive: {
+    color: '#FFFFFF',
+  },
+  emptyCard: {
+    backgroundColor: 'rgba(16,20,26,0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 0,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 20,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F5F5F7',
+  },
+  emptyDesc: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.60)',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  recordCard: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: 'rgba(16,20,26,0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 0,
+    padding: 14,
   },
-  filterLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(245,245,247,0.70)',
+  recordCardPresent: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#10B981',
   },
-  filterGroup: {
-    flexDirection: 'row',
-    gap: 6,
+  recordCardAbsent: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#EF4444',
   },
-  recordsContainer: {
+  recordLeft: {
     flex: 1,
+    gap: 3,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(245,245,247,0.70)',
-    marginBottom: 12,
-    letterSpacing: 0.3,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: 'rgba(245,245,247,0.50)',
-  },
-  recordRow: {
+  codeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245,245,247,0.06)',
+    gap: 8,
   },
-  recordInfo: {
-    flex: 1,
+  codeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A0A7B1',
+    letterSpacing: 0.5,
   },
-  recordSubject: {
+  dateText: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  nameText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#F5F5F7',
   },
-  recordMeta: {
-    fontSize: 12,
-    color: 'rgba(245,245,247,0.55)',
-    marginTop: 2,
+  timeText: {
+    fontSize: 10,
+    color: '#9CA3AF',
   },
-  recordStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 0,
+    borderWidth: 1,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  badgePresent: {
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    borderColor: '#10B981',
   },
-  recordStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
+  badgeAbsent: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderColor: '#EF4444',
   },
-  bottomSpacer: {
-    height: 20,
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  badgeTextPresent: {
+    color: '#10B981',
+  },
+  badgeTextAbsent: {
+    color: '#EF4444',
   },
 });

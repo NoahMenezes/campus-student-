@@ -1,57 +1,67 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchAttendanceData } from '@/services/attendance';
-import { getUser } from '@/services/auth';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
-import { ThemeColors } from '@/constants/colors';
+import {
+  getOverallAttendanceSummary,
+  getSubjectWiseAttendanceStats,
+} from '@/services/attendance-manager';
+import { OverallAttendanceSummary, SubjectAttendanceStats } from '@/types/attendance';
 
 const BG_MAIN = '#0A0B10';
 
 export default function SubjectsScreen() {
-  const [data, setData] = useState<{
-    subjects: any[];
-    overallPercentage: number;
-    attendedClasses: number;
-    totalClasses: number;
-  } | null>(null);
+  const [subjects, setSubjects] = useState<SubjectAttendanceStats[]>([]);
+  const [summary, setSummary] = useState<OverallAttendanceSummary | null>(null);
+  const [filter, setFilter] = useState<'all' | 'theory' | 'lab'>('all');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadData = async () => {
-      try {
-        const u = await getUser();
-        const d = await fetchAttendanceData(u);
-        if (mounted) {
-          setData({
-            subjects: d.subjects,
-            overallPercentage: d.overallPercentage,
-            attendedClasses: d.attendedClasses,
-            totalClasses: d.totalClasses,
-          });
-          setLoading(false);
-        }
-      } catch (err: unknown) {
-        if (mounted) {
-          setLoading(false);
-          setError(err instanceof Error ? err.message : 'Failed to load subjects');
-        }
-      }
-    };
-    loadData();
-    return () => {
-      mounted = false;
-    };
+  const loadData = useCallback(async () => {
+    try {
+      const [stats, sum] = await Promise.all([
+        getSubjectWiseAttendanceStats(),
+        getOverallAttendanceSummary(),
+      ]);
+      setSubjects(stats);
+      setSummary(sum);
+    } catch (err) {
+      console.error('Failed to load subjects:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  const theorySubjects = data?.subjects.filter((s) => s.type === 'theory') || [];
-  const labSubjects = data?.subjects.filter((s) => s.type === 'lab') || [];
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
+
+  const filteredSubjects = subjects.filter((s) => {
+    if (filter === 'all') return true;
+    return s.type === filter;
+  });
+
+  const theoryCount = subjects.filter((s) => s.type === 'theory').length;
+  const labCount = subjects.filter((s) => s.type === 'lab').length;
 
   if (loading) {
     return (
@@ -63,7 +73,7 @@ export default function SubjectsScreen() {
           contentPosition="center"
         />
         <LinearGradient
-          colors={['rgba(10,11,16,0.55)', 'rgba(24,27,36,0.85)', 'rgba(10,11,16,0.96)']}
+          colors={['rgba(10,11,16,0.60)', 'rgba(24,27,36,0.88)', 'rgba(10,11,16,0.96)']}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -76,31 +86,6 @@ export default function SubjectsScreen() {
     );
   }
 
-  if (error) {
-    return (
-      <View style={styles.root}>
-        <Image
-          source={require('@/assets/konnakol_background.png')}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          contentPosition="center"
-        />
-        <LinearGradient
-          colors={['rgba(10,11,16,0.55)', 'rgba(24,27,36,0.85)', 'rgba(10,11,16,0.96)']}
-          locations={[0, 0.5, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  if (!data) return null;
-
   return (
     <View style={styles.root}>
       <Image
@@ -110,7 +95,7 @@ export default function SubjectsScreen() {
         contentPosition="center"
       />
       <LinearGradient
-        colors={['rgba(10,11,16,0.45)', 'rgba(24,27,36,0.75)', 'rgba(10,11,16,0.94)']}
+        colors={['rgba(10,11,16,0.50)', 'rgba(24,27,36,0.80)', 'rgba(10,11,16,0.96)']}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -120,73 +105,151 @@ export default function SubjectsScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
+          }
         >
+          {/* Header */}
           <View style={styles.headerRow}>
             <View style={styles.greetingBlock}>
-              <Text style={styles.headerTitle}>Subjects</Text>
+              <Text style={styles.headerTitle}>Semester 5 Subjects</Text>
               <Text style={styles.headerSubtitle}>
-                Semester 5 &bull; {data.attendedClasses} of {data.totalClasses} classes
+                Computer Engineering &bull; Section B &bull; 10 Courses
               </Text>
             </View>
-            <Text style={styles.overallPct}>{data.overallPercentage}%</Text>
+            <View style={styles.overallBadge}>
+              <Text style={styles.overallLabel}>OVERALL</Text>
+              <Text style={styles.overallPct}>
+                {summary && summary.hasRecords ? `${summary.percentage}%` : '0%'}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Theory Courses</Text>
+          {/* Filter Pills */}
+          <View style={styles.filterBar}>
+            <Pressable
+              onPress={() => setFilter('all')}
+              style={[styles.filterPill, filter === 'all' && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+                All ({subjects.length})
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFilter('theory')}
+              style={[styles.filterPill, filter === 'theory' && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterText, filter === 'theory' && styles.filterTextActive]}>
+                Theory ({theoryCount})
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFilter('lab')}
+              style={[styles.filterPill, filter === 'lab' && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterText, filter === 'lab' && styles.filterTextActive]}>
+                Laboratories ({labCount})
+              </Text>
+            </Pressable>
           </View>
-          {theorySubjects.map((subject) => (
-            <SubjectRow key={subject.id} subject={subject} />
-          ))}
 
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Lab Courses</Text>
-          </View>
-          {labSubjects.map((subject) => (
-            <SubjectRow key={subject.id} subject={subject} />
+          {/* Subjects List */}
+          {filteredSubjects.map((subject, idx) => (
+            <Animated.View
+              key={subject.id}
+              entering={FadeInUp.delay(idx * 30).duration(300)}
+              style={styles.subjectCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                  <Text style={styles.subjectCode}>{subject.code}</Text>
+                  <View
+                    style={[
+                      styles.typeBadge,
+                      subject.type === 'lab' ? styles.typeBadgeLab : styles.typeBadgeTheory,
+                    ]}
+                  >
+                    <Text style={styles.typeBadgeText}>
+                      {subject.type === 'lab' ? 'LAB' : 'THEORY'}
+                    </Text>
+                  </View>
+                  {subject.category === 'elective' && (
+                    <View style={styles.electiveBadge}>
+                      <Text style={styles.electiveBadgeText}>ELECTIVE</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.statusIndicator}>
+                  {subject.classesConducted === 0 ? (
+                    <Text style={styles.emptyStatusText}>0 CLASSES</Text>
+                  ) : subject.percentage >= 75 ? (
+                    <View style={styles.safeBadge}>
+                      <Text style={styles.safeText}>SAFE</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.warningBadge}>
+                      <Text style={styles.warningText}>NEEDS {subject.neededClassesFor75} MORE</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <Text style={styles.subjectName}>{subject.name}</Text>
+
+              {/* Progress and Numbers */}
+              <View style={styles.statsRow}>
+                <View style={styles.statsLeft}>
+                  <Text style={styles.ratioText}>
+                    {subject.classesAttended} / {subject.classesConducted} attended
+                  </Text>
+                  <Text style={styles.absentText}>
+                    ({subject.classesAbsent} absent)
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.percentageValue,
+                    {
+                      color:
+                        subject.classesConducted === 0
+                          ? '#9CA3AF'
+                          : subject.percentage >= 75
+                          ? '#10B981'
+                          : '#EF4444',
+                    },
+                  ]}
+                >
+                  {subject.classesConducted === 0 ? '--' : `${subject.percentage}%`}
+                </Text>
+              </View>
+
+              {/* Progress Bar */}
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: subject.classesConducted === 0 ? '0%' : `${subject.percentage}%`,
+                      backgroundColor:
+                        subject.classesConducted === 0
+                          ? '#374151'
+                          : subject.percentage >= 75
+                          ? '#10B981'
+                          : subject.percentage >= 65
+                          ? '#F59E0B'
+                          : '#EF4444',
+                    },
+                  ]}
+                />
+              </View>
+            </Animated.View>
           ))}
         </ScrollView>
+
+        <BottomTabBar />
       </SafeAreaView>
-      <BottomTabBar />
     </View>
-  );
-}
-
-function SubjectRow({ subject }: { subject: any }) {
-  const isLab = subject.type === 'lab';
-  const isElective = subject.category === 'elective';
-
-  return (
-    <Animated.View entering={FadeInUp.duration(500)} style={styles.subjectCard}>
-      <View style={styles.subjectContent}>
-        <View style={styles.subjectInfo}>
-          <View style={styles.subjectMain}>
-            <Text style={styles.subjectName}>{subject.name}</Text>
-            <View style={styles.subjectMetaRow}>
-              <Text style={styles.subjectCode}>{subject.code}</Text>
-              <Text style={styles.subjectType}>
-                {isLab ? 'Lab' : 'Theory'} &bull; {isElective ? 'Elective' : 'Mandatory'}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.subjectPct}>{subject.percentage}%</Text>
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${subject.percentage}%`, backgroundColor: subject.progressColor },
-              ]}
-            />
-          </View>
-          <View style={styles.progressText}>
-            <Text style={styles.attendedCount}>
-              {subject.attended} / {subject.total} classes
-            </Text>
-          </View>
-        </View>
-      </View>
-    </Animated.View>
   );
 }
 
@@ -203,31 +266,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: ThemeColors.dark.danger,
-    textAlign: 'center',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 110,
-    gap: 14,
+    gap: 12,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   greetingBlock: {
     flex: 1,
@@ -239,90 +291,181 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(245,245,247,0.55)',
     marginTop: 3,
   },
-  overallPct: {
-    fontSize: 20,
+  overallBadge: {
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 0,
+  },
+  overallLabel: {
+    fontSize: 9,
+    color: '#9CA3AF',
     fontWeight: '700',
-    color: ThemeColors.dark.accent,
+    letterSpacing: 0.5,
   },
-  sectionHeader: {
-    marginBottom: 10,
+  overallPct: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0052FF',
   },
-  sectionTitle: {
-    fontSize: 13,
+  filterBar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(20,24,30,0.6)',
+    borderRadius: 0,
+  },
+  filterPillActive: {
+    backgroundColor: '#0052FF',
+    borderColor: '#387BFF',
+  },
+  filterText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(245,245,247,0.65)',
-    letterSpacing: 0.4,
+    color: '#9CA3AF',
+  },
+  filterTextActive: {
+    color: '#FFFFFF',
   },
   subjectCard: {
-    backgroundColor: ThemeColors.dark.surface,
+    backgroundColor: 'rgba(16,20,26,0.85)',
     borderWidth: 1,
-    borderColor: ThemeColors.dark.border,
-    borderRadius: ThemeColors.radius.none,
-    overflow: 'hidden',
-  },
-  subjectContent: {
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 0,
     padding: 16,
+    gap: 10,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 16,
   },
-  subjectInfo: {
-    flex: 1,
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  subjectMain: {
-    gap: 2,
+  subjectCode: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#A0A7B1',
+    letterSpacing: 0.5,
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 0,
+    borderWidth: 1,
+  },
+  typeBadgeTheory: {
+    backgroundColor: 'rgba(59,130,246,0.15)',
+    borderColor: 'rgba(59,130,246,0.4)',
+  },
+  typeBadgeLab: {
+    backgroundColor: 'rgba(168,85,247,0.15)',
+    borderColor: 'rgba(168,85,247,0.4)',
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  electiveBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderColor: 'rgba(245,158,11,0.4)',
+    borderWidth: 1,
+    borderRadius: 0,
+  },
+  electiveBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  statusIndicator: {
+    alignItems: 'flex-end',
+  },
+  emptyStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  safeBadge: {
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    borderColor: '#10B981',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 0,
+  },
+  safeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  warningBadge: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 0,
+  },
+  warningText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
   },
   subjectName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#F5F5F7',
   },
-  subjectMetaRow: {
+  statsRow: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 2,
   },
-  subjectCode: {
-    fontSize: 11,
+  statsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ratioText: {
+    fontSize: 12,
+    color: '#E5E7EB',
+    fontWeight: '500',
+  },
+  absentText: {
+    fontSize: 12,
     color: '#9CA3AF',
-    fontWeight: '500',
   },
-  subjectType: {
-    fontSize: 11,
-    color: ThemeColors.dark.textSecondary,
-    fontWeight: '500',
-  },
-  subjectPct: {
-    fontSize: 16,
+  percentageValue: {
+    fontSize: 17,
     fontWeight: '700',
-    color: ThemeColors.dark.accent,
-  },
-  progressContainer: {
-    width: 120,
-    gap: 8,
   },
   progressTrack: {
-    height: 5,
-    backgroundColor: ThemeColors.dark.surfaceElevated,
-    borderRadius: ThemeColors.radius.none,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 0,
     overflow: 'hidden',
-    marginTop: 2,
   },
   progressFill: {
-    height: 5,
-    borderRadius: ThemeColors.radius.none,
-  },
-  progressText: {
-    alignItems: 'center',
-  },
-  attendedCount: {
-    fontSize: 11,
-    color: ThemeColors.dark.textSecondary,
+    height: '100%',
+    borderRadius: 0,
   },
 });

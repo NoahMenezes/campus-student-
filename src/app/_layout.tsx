@@ -23,11 +23,18 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ gestureEnabled: false }} />
         <Stack.Screen name="login" options={{ gestureEnabled: false }} />
         <Stack.Screen name="signup" options={{ gestureEnabled: false }} />
-        {/* Main app screens (post-auth) */}
+
+        {/* Primary Attendance Screens */}
         <Stack.Screen name="home" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="today" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="yesterday" options={{ gestureEnabled: false }} />
         <Stack.Screen name="subjects" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="calendar" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="monthly-reports" options={{ gestureEnabled: false }} />
         <Stack.Screen name="timetable" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="notifications" options={{ gestureEnabled: false }} />
+
+        {/* Secondary / Profile / Tool screens */}
+        <Stack.Screen name="calendar" options={{ gestureEnabled: false }} />
         <Stack.Screen name="qr-scanner" options={{ gestureEnabled: false }} />
         <Stack.Screen name="attendance-history" options={{ gestureEnabled: false }} />
         <Stack.Screen name="profile" options={{ gestureEnabled: false }} />

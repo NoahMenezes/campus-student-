@@ -58,7 +58,7 @@ export default function CalendarScreen() {
 
   useEffect(() => {
     let mounted = true;
-    const loadData = async () => {
+    (async () => {
       try {
         const records = await fetchAttendanceHistory();
         if (mounted) {
@@ -84,8 +84,10 @@ export default function CalendarScreen() {
           setError(err instanceof Error ? err.message : 'Failed to load calendar data');
         }
       }
+    })();
+    return () => {
+      mounted = false;
     };
-    loadData();
   }, []);
 
   if (loading) {
@@ -233,8 +235,9 @@ export default function CalendarScreen() {
             </View>
           )}
         </ScrollView>
+
+        <BottomTabBar />
       </SafeAreaView>
-      <BottomTabBar />
     </View>
   );
 }
