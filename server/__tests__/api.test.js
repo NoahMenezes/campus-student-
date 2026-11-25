@@ -342,8 +342,19 @@ describe('Campus Student API + MongoDB Integration Suite', () => {
   });
 
   it('GET /notifications & PATCH /notifications/read-all use countDocuments and updateMany', async () => {
-    // Ensure Noah has at least 1 unread notification for the test
-    await Notification.updateMany({ studentId: noahStudent._id }, { $set: { read: false } });
+    // Ensure Noah has at least 1 unread notification for the test (even if cleared manually)
+    const existingCount = await Notification.countDocuments({ studentId: noahStudent._id });
+    if (existingCount === 0) {
+      await Notification.create({
+        studentId: noahStudent._id,
+        type: 'low_attendance_warning',
+        title: 'Test Attendance Watch',
+        body: 'Test notification for unreadCount and read-all verification.',
+        read: false,
+      });
+    } else {
+      await Notification.updateMany({ studentId: noahStudent._id }, { $set: { read: false } });
+    }
 
     const badgeRes = await request(app)
       .get('/notifications/unread-count')
@@ -494,8 +505,17 @@ describe('Campus Student API + MongoDB Integration Suite', () => {
       .get('/analytics/today?dateKey=2026-11-25')
       .set('Authorization', `Bearer ${noahToken}`)
       .expect(200);
-    assert.equal(wedTodayRes.body.data.Pending, wedTodayRes.body.data.Total);
-    assert.equal(wedTodayRes.body.data.percentage, null);
+    assert.equal(
+      wedTodayRes.body.data.Total,
+      wedTodayRes.body.data.Present + wedTodayRes.body.data.Absent + wedTodayRes.body.data.Pending
+    );
+
+    const unmarkedWedRes = await request(app)
+      .get('/analytics/today?dateKey=2026-12-02')
+      .set('Authorization', `Bearer ${noahToken}`)
+      .expect(200);
+    assert.equal(unmarkedWedRes.body.data.Pending, unmarkedWedRes.body.data.Total);
+    assert.equal(unmarkedWedRes.body.data.percentage, null);
 
     // 4. monthly ($month with Asia/Kolkata timezone)
     const monthlyRes = await request(app)
@@ -663,6 +683,27 @@ describe('Campus Student API + MongoDB Integration Suite', () => {
     assert.ok(benchRes.body.data.asyncStorageVsMongoDB.length >= 4);
 
     // 4. Live SSE Change Stream on attendance + "dropped below 75%" alert
+    // Ensure clean baseline on 2026-11-16..2026-11-19 and bring Noah just above 75% if extra marks exist
+    const tempDateKeys = ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19'];
+    await Attendance.deleteMany({ studentId: noahStudent._id, dateKey: { $in: tempDateKeys } });
+    const preOverall = await request(app)
+      .get('/analytics/overall')
+      .set('Authorization', `Bearer ${noahToken}`)
+      .expect(200);
+    let curPresent = preOverall.body.data.present;
+    let curMarked = preOverall.body.data.marked;
+    const fillerDates = ['2026-11-16', '2026-11-17', '2026-11-18'];
+    let fillerIdx = 0;
+    while (curPresent / (curMarked + 1) >= 0.75 && fillerIdx < fillerDates.length) {
+      await request(app)
+        .put('/attendance')
+        .set('Authorization', `Bearer ${noahToken}`)
+        .send({ slotId: theorySlot._id, dateKey: fillerDates[fillerIdx], status: 'A' })
+        .expect(200);
+      curMarked += 1;
+      fillerIdx += 1;
+    }
+
     const liveServer = http.createServer(app);
     await new Promise((resolve) => liveServer.listen(0, '127.0.0.1', resolve));
     const port = liveServer.address().port;
@@ -707,7 +748,7 @@ describe('Campus Student API + MongoDB Integration Suite', () => {
 
       await readUntil((evs) => evs.some((e) => e.event === 'connected'));
 
-      // Mark Noah (75.0%) Absent on 2026-11-19 -> drops Noah below 75% (69.2%)!
+      // Mark Noah Absent on 2026-11-19 -> drops Noah below 75%!
       await request(app)
         .put('/attendance')
         .set('Authorization', `Bearer ${noahToken}`)
@@ -726,6 +767,7 @@ describe('Campus Student API + MongoDB Integration Suite', () => {
         .send({ slotId: theorySlot._id, dateKey: '2026-11-19' })
         .expect(200);
     } finally {
+      await Attendance.deleteMany({ studentId: noahStudent._id, dateKey: { $in: tempDateKeys } });
       if (sseReader) await sseReader.cancel().catch(() => {});
       sseController.abort();
       liveServer.closeAllConnections?.();
