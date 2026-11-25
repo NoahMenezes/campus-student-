@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -18,6 +19,7 @@ import {
   getOverallAttendanceSummary,
   getSubjectWiseAttendanceStats,
 } from '@/services/attendance-manager';
+import { useAttendanceLiveSync } from '@/services/attendance-stream';
 import { OverallAttendanceSummary, SubjectAttendanceStats } from '@/types/attendance';
 
 const BG_MAIN = '#0A0B10';
@@ -45,10 +47,13 @@ export default function SubjectsScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  useAttendanceLiveSync(loadData);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -114,7 +119,7 @@ export default function SubjectsScreen() {
             <View style={styles.greetingBlock}>
               <Text style={styles.headerTitle}>Semester 5 Subjects</Text>
               <Text style={styles.headerSubtitle}>
-                Computer Engineering &bull; Section B &bull; 10 Courses
+                Computer Engineering &bull; Section B &bull; {subjects.length} Courses
               </Text>
             </View>
             <View style={styles.overallBadge}>
@@ -170,7 +175,11 @@ export default function SubjectsScreen() {
                     ]}
                   >
                     <Text style={styles.typeBadgeText}>
-                      {subject.type === 'lab' ? 'LAB' : 'THEORY'}
+                      {subject.type === 'lab'
+                        ? 'LAB'
+                        : subject.type === 'other'
+                          ? 'ACTIVITY'
+                          : 'THEORY'}
                     </Text>
                   </View>
                   {subject.category === 'elective' && (
@@ -181,11 +190,15 @@ export default function SubjectsScreen() {
                 </View>
 
                 <View style={styles.statusIndicator}>
-                  {subject.classesConducted === 0 ? (
+                  {subject.classesConducted === 0 || subject.percentage === null ? (
                     <Text style={styles.emptyStatusText}>0 CLASSES</Text>
-                  ) : subject.percentage >= 75 ? (
+                  ) : subject.status === 'safe' ? (
                     <View style={styles.safeBadge}>
                       <Text style={styles.safeText}>SAFE</Text>
+                    </View>
+                  ) : subject.status === 'warning' ? (
+                    <View style={[styles.warningBadge, { borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.15)' }]}>
+                      <Text style={[styles.warningText, { color: '#F59E0B' }]}>AT RISK</Text>
                     </View>
                   ) : (
                     <View style={styles.warningBadge}>
@@ -212,15 +225,15 @@ export default function SubjectsScreen() {
                     styles.percentageValue,
                     {
                       color:
-                        subject.classesConducted === 0
+                        subject.classesConducted === 0 || subject.percentage === null
                           ? '#9CA3AF'
-                          : subject.percentage >= 75
-                          ? '#10B981'
-                          : '#EF4444',
+                          : subject.progressColor,
                     },
                   ]}
                 >
-                  {subject.classesConducted === 0 ? '--' : `${subject.percentage}%`}
+                  {subject.classesConducted === 0 || subject.percentage === null
+                    ? '--'
+                    : `${subject.percentage}%`}
                 </Text>
               </View>
 
@@ -230,15 +243,14 @@ export default function SubjectsScreen() {
                   style={[
                     styles.progressFill,
                     {
-                      width: subject.classesConducted === 0 ? '0%' : `${subject.percentage}%`,
+                      width:
+                        subject.classesConducted === 0 || subject.percentage === null
+                          ? '0%'
+                          : `${subject.percentage}%`,
                       backgroundColor:
-                        subject.classesConducted === 0
+                        subject.classesConducted === 0 || subject.percentage === null
                           ? '#374151'
-                          : subject.percentage >= 75
-                          ? '#10B981'
-                          : subject.percentage >= 65
-                          ? '#F59E0B'
-                          : '#EF4444',
+                          : subject.progressColor,
                     },
                   ]}
                 />

@@ -40,8 +40,12 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      await login({ email: email.trim(), password });
-      router.replace('/home');
+      const auth = await login({ email: email.trim(), password });
+      if (auth.user.role === 'admin') {
+        router.replace('/demo-center' as any);
+      } else {
+        router.replace('/home');
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
       setErrorMessage(msg);

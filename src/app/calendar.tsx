@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ThemeColors } from '@/constants/colors';
 import { fetchAttendanceHistory } from '@/services/attendance';
+import { useAttendanceLiveSync } from '@/services/attendance-stream';
 
 const BG_MAIN = '#0A0B10';
 
@@ -53,42 +55,53 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const currentDay = now.getDate();
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const records = await fetchAttendanceHistory();
-        if (mounted) {
-          const dayMap = new Map<number, DayStatus>();
-          records.forEach((r) => {
-            const d = new Date(r.date);
-            const dayNum = d.getDate();
-            const status = r.status === 'Present' ? 'present' : r.status === 'Absent' ? 'absent' : 'none';
-            dayMap.set(dayNum, status);
-          });
+  const loadCalendar = useCallback(async () => {
+    try {
+      const records = await fetchAttendanceHistory();
+      const targetYear = now.getFullYear();
+      const targetMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const monthPrefix = `${targetYear}-${targetMonth}-`;
+      const dayMap = new Map<number, DayStatus>();
 
-          setDays((prev) =>
-            prev.map((d) => ({
-              ...d,
-              status: d.date !== 0 && dayMap.has(d.date) ? dayMap.get(d.date)! : 'none',
-            }))
-          );
-          setLoading(false);
+      records.forEach((r) => {
+        const dateKey = r.dateKey || '';
+        if (dateKey && !dateKey.startsWith(monthPrefix)) return;
+        const dayNum = dateKey
+          ? parseInt(dateKey.split('-')[2], 10)
+          : new Date(r.date).getDate();
+        const status: DayStatus =
+          r.status === 'P' ? 'present' : r.status === 'A' ? 'absent' : 'none';
+        if (status !== 'none') {
+          const prev = dayMap.get(dayNum);
+          // Highlight 'absent' if any slot on that day was missed, otherwise 'present'
+          dayMap.set(dayNum, prev === 'absent' ? 'absent' : status);
         }
-      } catch (err: unknown) {
-        if (mounted) {
-          setLoading(false);
-          setError(err instanceof Error ? err.message : 'Failed to load calendar data');
-        }
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      });
+
+      setDays((prev) =>
+        prev.map((d) => ({
+          ...d,
+          status: d.date !== 0 && dayMap.has(d.date) ? dayMap.get(d.date)! : 'none',
+        }))
+      );
+      setError(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load calendar data');
+    } finally {
+      setLoading(false);
+    }
+  }, [now]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCalendar();
+    }, [loadCalendar])
+  );
+
+  useAttendanceLiveSync(loadCalendar);
 
   if (loading) {
     return (
@@ -182,12 +195,12 @@ export default function CalendarScreen() {
           </View>
 
           <View style={styles.calendarGrid}>
-            {days.map((day) => {
+            {days.map((day, idx) => {
               const isToday = day.date === currentDay;
               const isSelected = selectedDate === day.date;
               const isEmpty = day.date === 0;
 
-              if (isEmpty) return <View key={day.date} style={styles.emptyCell} />;
+              if (isEmpty) return <View key={`empty_${idx}`} style={styles.emptyCell} />;
 
               return (
                 <TouchableOpacity

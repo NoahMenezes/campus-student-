@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { getMonthlyAttendanceReport } from '@/services/attendance-manager';
+import { useAttendanceLiveSync } from '@/services/attendance-stream';
 import { MonthlyAttendanceReport } from '@/types/attendance';
 
 const BG_MAIN = '#0A0B10';
@@ -50,10 +52,13 @@ export default function MonthlyReportsScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadReport(selectedMonth);
-  }, [selectedMonth, loadReport]);
+  useFocusEffect(
+    useCallback(() => {
+      loadReport(selectedMonth);
+    }, [selectedMonth, loadReport])
+  );
+
+  useAttendanceLiveSync(useCallback(() => loadReport(selectedMonth), [selectedMonth, loadReport]));
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -137,7 +142,7 @@ export default function MonthlyReportsScreen() {
               <Text style={styles.monthHeader}>{report?.monthName} {report?.year}</Text>
               <View style={styles.percentageBadge}>
                 <Text style={styles.percentageText}>
-                  {report && report.totalScheduled > 0 ? `${report.percentage}%` : '0%'}
+                  {report && report.percentage !== null ? `${report.percentage}%` : '0%'}
                 </Text>
               </View>
             </View>
@@ -145,7 +150,7 @@ export default function MonthlyReportsScreen() {
             <View style={styles.metricGrid}>
               <View style={styles.metricItem}>
                 <Text style={styles.metricVal}>{report?.totalScheduled ?? 0}</Text>
-                <Text style={styles.metricLbl}>Recorded</Text>
+                <Text style={styles.metricLbl}>Scheduled</Text>
               </View>
               <View style={styles.vDivider} />
               <View style={styles.metricItem}>
@@ -161,6 +166,13 @@ export default function MonthlyReportsScreen() {
                 </Text>
                 <Text style={styles.metricLbl}>Absent</Text>
               </View>
+              <View style={styles.vDivider} />
+              <View style={styles.metricItem}>
+                <Text style={[styles.metricVal, { color: '#F59E0B' }]}>
+                  {report?.unmarkedClasses ?? 0}
+                </Text>
+                <Text style={styles.metricLbl}>Pending</Text>
+              </View>
             </View>
 
             {/* Progress bar */}
@@ -169,9 +181,13 @@ export default function MonthlyReportsScreen() {
                 style={[
                   styles.progressFill,
                   {
-                    width: report && report.totalScheduled > 0 ? `${report.percentage}%` : '0%',
+                    width: report && report.percentage !== null ? `${report.percentage}%` : '0%',
                     backgroundColor:
-                      report && report.percentage >= 75 ? '#10B981' : '#0052FF',
+                      report && report.percentage !== null && report.percentage >= 80
+                        ? '#10B981'
+                        : report && report.percentage !== null && report.percentage >= 75
+                          ? '#F59E0B'
+                          : '#0052FF',
                   },
                 ]}
               />
@@ -201,7 +217,11 @@ export default function MonthlyReportsScreen() {
                     ]}
                   >
                     <Text style={styles.typeBadgeText}>
-                      {subj.type === 'lab' ? 'LAB' : 'THEORY'}
+                      {subj.type === 'lab'
+                        ? 'LAB'
+                        : subj.type === 'other'
+                          ? 'ACTIVITY'
+                          : 'THEORY'}
                     </Text>
                   </View>
                 </View>
@@ -214,18 +234,21 @@ export default function MonthlyReportsScreen() {
                     styles.subjPct,
                     {
                       color:
-                        subj.total === 0
+                        subj.total === 0 || subj.percentage === null
                           ? '#9CA3AF'
-                          : subj.percentage >= 75
-                          ? '#10B981'
-                          : '#EF4444',
+                          : subj.percentage >= 80
+                            ? '#10B981'
+                            : subj.percentage >= (subj.minAttendance ?? 75)
+                              ? '#F59E0B'
+                              : '#EF4444',
                     },
                   ]}
                 >
-                  {subj.total === 0 ? '--' : `${subj.percentage}%`}
+                  {subj.total === 0 || subj.percentage === null ? '--' : `${subj.percentage}%`}
                 </Text>
                 <Text style={styles.subCount}>
                   {subj.attended}/{subj.total}
+                  {typeof subj.pending === 'number' ? ` (${subj.pending} pend)` : ''}
                 </Text>
               </View>
             </Animated.View>

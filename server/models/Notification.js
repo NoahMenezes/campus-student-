@@ -1,67 +1,60 @@
 const mongoose = require('mongoose');
 
+const NINETY_DAYS_SECONDS = 90 * 24 * 60 * 60;
+
+// Topic 2: BSON Schema for `notifications` collection with 90-day TTL index on createdAt
 const notificationSchema = new mongoose.Schema(
   {
-    studentEnrollment: {
+    studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'StudentEnrollment',
+      ref: 'Student',
       required: true,
     },
-    attendanceSession: {
+    courseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'AttendanceSession',
+      ref: 'Course',
+      default: null,
+    },
+    slotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TimetableSlot',
+      default: null,
     },
     type: {
       type: String,
-      enum: [
-        'lecture_started',
-        'attendance_pending',
-        'attendance_marked',
-        'timetable_changed',
-        'low_attendance_warning',
-        'monthly_summary',
-      ],
+      enum: ['lecture_started', 'low_attendance_warning', 'attendance_marked', 'system'],
       required: true,
     },
     title: {
       type: String,
       required: true,
+      trim: true,
     },
     body: {
       type: String,
       required: true,
+      trim: true,
     },
-    scheduledFor: {
-      type: Date,
-    },
-    sentAt: {
-      type: Date,
-    },
-    isRead: {
+    read: {
       type: Boolean,
+      required: true,
       default: false,
     },
-    isSent: {
-      type: Boolean,
-      default: false,
-    },
-    deliveryChannel: {
-      type: String,
-      enum: ['push', 'in_app'],
-      default: 'push',
-    },
-    notificationId: {
-      type: String,
+    createdAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
     },
   },
   {
-    timestamps: true,
+    collection: 'notifications',
+    timestamps: { createdAt: false, updatedAt: true },
   }
 );
 
-notificationSchema.index({ studentEnrollment: 1, isRead: 1 });
-notificationSchema.index({ studentEnrollment: 1, createdAt: -1 });
-notificationSchema.index({ type: 1, isSent: 1 });
-notificationSchema.index({ notificationId: 1 }, { unique: true, sparse: true });
+// Topic 2 & 9: Inbox query index + 90-day TTL index + hashed shard key index
+notificationSchema.index({ studentId: 1, read: 1, createdAt: -1 });
+notificationSchema.index({ studentId: 'hashed' });
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: NINETY_DAYS_SECONDS });
 
 module.exports = mongoose.model('Notification', notificationSchema);

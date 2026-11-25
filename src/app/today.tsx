@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,6 +21,7 @@ import {
   getTodayAttendanceSummary,
   markAttendanceSession,
 } from '@/services/attendance-manager';
+import { useAttendanceLiveSync } from '@/services/attendance-stream';
 import { DailyAttendanceSummary, LabBatch, LectureSession } from '@/types/attendance';
 
 const BG_MAIN = '#0A0B10';
@@ -45,10 +48,13 @@ export default function TodayAttendanceScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  useAttendanceLiveSync(loadData);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -62,7 +68,8 @@ export default function TodayAttendanceScreen() {
       await markAttendanceSession(session, status, batch);
       await loadData();
     } catch (err) {
-      console.error('Failed to mark attendance:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to mark attendance';
+      Alert.alert('Cannot Mark Attendance', msg);
     } finally {
       setMarkingId(null);
     }
@@ -229,6 +236,11 @@ export default function TodayAttendanceScreen() {
                     </Text>
                   </View>
                   <View style={styles.cardBadges}>
+                    {session.pendingSync && (
+                      <View style={[styles.statusBadge, { backgroundColor: 'rgba(245,158,11,0.15)', borderColor: '#F59E0B' }]}>
+                        <Text style={[styles.statusBadgeText, { color: '#F59E0B' }]}>PENDING SYNC</Text>
+                      </View>
+                    )}
                     <View
                       style={[
                         styles.typeBadge,

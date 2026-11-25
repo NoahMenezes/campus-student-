@@ -1,42 +1,55 @@
 const mongoose = require('mongoose');
 
+// Topic 2 & 9: BSON Schema for `attendance` collection with shard-key-prefixed unique index
 const attendanceSchema = new mongoose.Schema(
   {
-    student: {
+    studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Student',
       required: true,
     },
-    subject: {
+    courseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Subject',
+      ref: 'Course',
       required: true,
     },
-    date: {
-      type: Date,
+    slotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TimetableSlot',
       required: true,
+    },
+    dateKey: {
+      type: String,
+      required: true,
+      trim: true,
+      match: /^\d{4}-\d{2}-\d{2}$/, // IST day YYYY-MM-DD
     },
     status: {
       type: String,
-      enum: ['present', 'absent', 'late'],
+      enum: ['P', 'A'],
       required: true,
     },
-    markedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+    markedAt: {
+      type: Date,
+      required: true,
+      default: Date.now, // UTC Date
     },
-    sessionCode: {
+    source: {
       type: String,
-      trim: true,
+      enum: ['seed', 'manual', 'qr', 'sync', 'api'],
+      required: true,
+      default: 'manual',
     },
   },
   {
-    timestamps: true,
+    collection: 'attendance',
+    timestamps: false,
   }
 );
 
-attendanceSchema.index({ student: 1, subject: 1, date: 1 });
-attendanceSchema.index({ student: 1, date: -1 });
-attendanceSchema.index({ subject: 1, date: -1 });
+// Topic 2 & 9: Shard-key-prefixed unique compound index ({ studentId, dateKey } shard key prefix + slotId)
+attendanceSchema.index({ studentId: 1, dateKey: 1, slotId: 1 }, { unique: true });
+attendanceSchema.index({ studentId: 1, courseId: 1 });
+attendanceSchema.index({ studentId: 1, markedAt: -1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

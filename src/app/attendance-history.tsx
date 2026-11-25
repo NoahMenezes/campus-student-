@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { getAllAttendanceRecords } from '@/services/attendance-manager';
+import { useAttendanceLiveSync } from '@/services/attendance-stream';
 import { AttendanceRecord } from '@/types/attendance';
 
 const BG_MAIN = '#0A0B10';
@@ -39,10 +41,13 @@ export default function AttendanceHistoryScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  useAttendanceLiveSync(loadData);
 
   const onRefresh = () => {
     setRefreshing(true);

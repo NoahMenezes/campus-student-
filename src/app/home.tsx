@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,10 +25,9 @@ import {
   setStudentBatch,
 } from '@/services/attendance-manager';
 import { getUser } from '@/services/auth';
-import {
-  checkAndDispatchLectureAlerts,
-  getStoredNotifications,
-} from '@/services/notifications';
+import { useAttendanceLiveSync } from '@/services/attendance-stream';
+import { toggleDemoMode } from '@/services/demo-mode';
+import { getUnreadNotificationCount } from '@/services/notifications';
 import { getCurrentISTTimeMinutes, parseMinutesFromTimeString } from '@/services/timetable';
 import {
   DailyAttendanceSummary,
@@ -54,17 +54,15 @@ export default function HomeScreen() {
       if (u?.name) setUserName(u.name);
       setBatch(b);
 
-      await checkAndDispatchLectureAlerts(b);
-
-      const [sum, tData, notifs] = await Promise.all([
+      const [sum, tData, unreadCount] = await Promise.all([
         getOverallAttendanceSummary(),
         getTodayAttendanceSummary(b),
-        getStoredNotifications(),
+        getUnreadNotificationCount().catch(() => 0),
       ]);
 
       setOverall(sum);
       setTodayData(tData);
-      setUnreadNotifs(notifs.filter((n) => !n.read).length);
+      setUnreadNotifs(unreadCount);
     } catch (err) {
       console.error('Home load error:', err);
     } finally {
@@ -73,10 +71,13 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadAll();
-  }, [loadAll]);
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [loadAll])
+  );
+
+  useAttendanceLiveSync(loadAll);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -96,7 +97,8 @@ export default function HomeScreen() {
       await markAttendanceSession(session, status, batch);
       await loadAll();
     } catch (err) {
-      console.error('Failed to mark:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to mark attendance';
+      Alert.alert('Cannot Mark Attendance', msg);
     } finally {
       setMarkingId(null);
     }
@@ -157,13 +159,20 @@ export default function HomeScreen() {
         >
           {/* Top Bar: Profile Greeting & Notification Bell */}
           <View style={styles.topBar}>
-            <View>
+            <Pressable
+              onLongPress={() => {
+                toggleDemoMode();
+              }}
+              delayLongPress={450}
+              style={({ pressed }) => (pressed ? { opacity: 0.78 } : undefined)}
+              accessibilityHint="Long-press to toggle MongoDB Demo Mode"
+            >
               <Text style={styles.greetingSub}>GOA COLLEGE OF ENGINEERING</Text>
               <Text style={styles.greetingName}>Hi, {userName}</Text>
               <Text style={styles.classLabel}>
                 SE Sem 5 &bull; Section B &bull; Dept of Computer Eng.
               </Text>
-            </View>
+            </Pressable>
 
             <View style={styles.topRightActions}>
               <Pressable
@@ -277,9 +286,18 @@ export default function HomeScreen() {
                 style={[
                   styles.heroProgressFill,
                   {
-                    width: overall && overall.hasRecords ? `${overall.percentage}%` : '0%',
+                    width:
+                      overall && overall.hasRecords && overall.percentage !== null
+                        ? `${overall.percentage}%`
+                        : '0%',
                     backgroundColor:
-                      overall && overall.percentage >= 75 ? '#10B981' : '#0052FF',
+                      overall?.risk === 'SAFE'
+                        ? '#10B981'
+                        : overall?.risk === 'AT_RISK'
+                          ? '#F59E0B'
+                          : overall?.risk === 'DEFAULTER'
+                            ? '#EF4444'
+                            : '#0052FF',
                   },
                 ]}
               />
@@ -313,7 +331,9 @@ export default function HomeScreen() {
             >
               <Text style={styles.quickNavTitle}>Today&apos;s Classes</Text>
               <Text style={styles.quickNavSub}>
-                {todayData ? `${todayData.attendedClasses}/${todayData.totalClasses} marked` : 'View'}
+                {todayData
+                  ? `${todayData.attendedClasses + todayData.absentClasses}/${todayData.totalClasses} marked`
+                  : 'View'}
               </Text>
             </Pressable>
 
@@ -329,7 +349,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/subjects' as any)}
               style={styles.quickNavBtn}
             >
-              <Text style={styles.quickNavTitle}>10 Subjects</Text>
+              <Text style={styles.quickNavTitle}>11 Subjects</Text>
               <Text style={styles.quickNavSub}>Theory &amp; Lab</Text>
             </Pressable>
 
@@ -376,15 +396,22 @@ export default function HomeScreen() {
                     <Text style={styles.previewTime}>
                       {session.startTime} &ndash; {session.endTime}
                     </Text>
-                    <View
-                      style={[
-                        styles.previewTypeBadge,
-                        session.type === 'lab' ? styles.badgeLab : styles.badgeTheory,
-                      ]}
-                    >
-                      <Text style={styles.badgeText}>
-                        {session.type === 'lab' ? 'LAB' : 'THEORY'}
-                      </Text>
+                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                      {session.pendingSync && (
+                        <View style={styles.pendingSyncBadge}>
+                          <Text style={styles.pendingSyncText}>PENDING SYNC</Text>
+                        </View>
+                      )}
+                      <View
+                        style={[
+                          styles.previewTypeBadge,
+                          session.type === 'lab' ? styles.badgeLab : styles.badgeTheory,
+                        ]}
+                      >
+                        <Text style={styles.badgeText}>
+                          {session.type === 'lab' ? 'LAB' : session.type === 'other' ? 'ACTIVITY' : 'THEORY'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
@@ -773,6 +800,18 @@ const styles = StyleSheet.create({
   badgeLab: {
     backgroundColor: 'rgba(168,85,247,0.15)',
     borderColor: 'rgba(168,85,247,0.4)',
+  },
+  pendingSyncBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderWidth: 1,
+    backgroundColor: 'rgba(245,158,11,0.18)',
+    borderColor: '#F59E0B',
+  },
+  pendingSyncText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#F59E0B',
   },
   badgeText: {
     fontSize: 9,

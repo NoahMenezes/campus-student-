@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { z } from 'zod';
+import { recordApiTrace } from './demo-mode';
 
 export const loginSchema = z.object({
   email: z.string().trim().email('Enter a valid campus email address'),
@@ -33,14 +34,18 @@ export type SignupInput = z.infer<typeof signupSchema>;
 
 export interface AuthUser {
   id: string;
+  studentId?: string | null;
   email: string;
   name: string;
   role?: string;
-  rollNumber?: string;
-  department?: string;
-  semester?: number;
+  rollNo?: string | null;
+  rollNumber?: string | null;
+  department?: string | null;
+  semester?: number | null;
+  section?: string | null;
+  labBatch?: string | null;
   academicYear?: string;
-  isOfflineMode?: boolean;
+  status?: string | null;
 }
 
 export interface AuthResult {
@@ -50,6 +55,46 @@ export interface AuthResult {
 
 const TOKEN_KEY = 'campus_student_token';
 const USER_KEY = 'campus_student_user';
+
+// Global event listeners for { status: "reconnecting" } toast notifications
+type ToastListener = (message: string) => void;
+const reconnectingListeners = new Set<ToastListener>();
+type AuthSessionListener = () => void;
+const sessionListeners = new Set<AuthSessionListener>();
+
+export function subscribeAuthSession(listener: AuthSessionListener): () => void {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
+function notifyAuthSessionChange(): void {
+  sessionListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      // ignore
+    }
+  });
+}
+
+export function subscribeReconnectingToast(listener: ToastListener): () => void {
+  reconnectingListeners.add(listener);
+  return () => {
+    reconnectingListeners.delete(listener);
+  };
+}
+
+export function notifyReconnecting(message = 'Database reconnecting... retrying automatically'): void {
+  reconnectingListeners.forEach((fn) => {
+    try {
+      fn(message);
+    } catch {
+      // ignore subscriber failure
+    }
+  });
+}
 
 const isSecureStoreAvailable = async (): Promise<boolean> => {
   if (Platform.OS === 'web') return false;
@@ -113,10 +158,23 @@ export const getApiBaseUrl = (): string => {
   if (configured && configured.trim().length > 0) {
     return configured.trim().replace(/\/+$/, '');
   }
-  return 'http://localhost:4000';
+  return 'http://192.168.31.151:4000';
 };
 
-const request = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+export class ApiRequestError extends Error {
+  status: number;
+  isReconnecting: boolean;
+  isNetwork: boolean;
+
+  constructor(message: string, status = 0, isReconnecting = false, isNetwork = false) {
+    super(message);
+    this.status = status;
+    this.isReconnecting = isReconnecting;
+    this.isNetwork = isNetwork;
+  }
+}
+
+export const request = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const token = await getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -128,115 +186,143 @@ const request = async (input: RequestInfo | URL, init?: RequestInit): Promise<Re
   return fetch(input, { ...init, headers: { ...headers, ...(init?.headers || {}) } });
 };
 
-export async function login(input: LoginInput): Promise<AuthResult> {
-  const validated = loginSchema.parse(input);
+export async function apiRequest<T = any>(path: string, init?: RequestInit): Promise<T> {
   const baseUrl = getApiBaseUrl();
-
+  const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
-    const response = await request(`${baseUrl}/auth/login`, {
-      method: 'POST',
-      body: JSON.stringify({
-        email: validated.email.toLowerCase(),
-        password: validated.password,
-      }),
-      signal: controller.signal,
-    });
-
+    const response = await request(url, { ...init, signal: init?.signal ?? controller.signal });
     clearTimeout(timeoutId);
 
-    const data = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => ({}));
+    const bodyData = payload?.data !== undefined ? payload.data : payload;
+
+    if (payload?.meta && typeof payload.meta === 'object') {
+      recordApiTrace({
+        method: (init?.method || 'GET').toUpperCase(),
+        path,
+        status: response.status,
+        meta: payload.meta,
+      });
+    }
+
+    if (
+      payload?.status === 'reconnecting' ||
+      payload?.data?.status === 'reconnecting'
+    ) {
+      notifyReconnecting(
+        bodyData?.message || 'Database reconnecting... retrying automatically'
+      );
+      throw new ApiRequestError(
+        bodyData?.message || 'Database reconnecting',
+        response.status || 503,
+        true,
+        false
+      );
+    }
 
     if (!response.ok) {
-      throw new Error(data.message || data.error || 'Invalid credentials');
+      const msg =
+        bodyData?.error || bodyData?.message || payload?.error || `Request failed (${response.status})`;
+      throw new ApiRequestError(msg, response.status, false, response.status >= 500);
     }
 
-    if (!data.token || !data.user) {
-      throw new Error('Authentication could not be completed.');
-    }
-
-    const result: AuthResult = {
-      token: data.token,
-      user: {
-        id: String(data.user.id || data.user._id || ''),
-        email: data.user.email,
-        name: data.user.name || validated.email.split('@')[0],
-        role: data.user.role || 'student',
-        rollNumber: data.user.rollNumber,
-        department: data.user.department,
-        semester: data.user.semester,
-        academicYear: data.user.academicYear,
-      },
-    };
-
-    await setSession(result.token, result.user);
-    return result;
+    return bodyData as T;
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Request timed out. Please check your connection.');
+    if (err instanceof ApiRequestError) {
+      throw err;
     }
-    throw err;
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiRequestError('Request timed out', 0, false, true);
+    }
+    throw new ApiRequestError(
+      err instanceof Error ? err.message : 'Network error',
+      0,
+      false,
+      true
+    );
   }
+}
+
+export async function login(input: LoginInput): Promise<AuthResult> {
+  const validated = loginSchema.parse(input);
+  const data = await apiRequest<{ token: string; user: any }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: validated.email.toLowerCase(),
+      password: validated.password,
+    }),
+  });
+
+  if (!data?.token || !data?.user) {
+    throw new Error('Authentication could not be completed.');
+  }
+
+  const result: AuthResult = {
+    token: data.token,
+    user: {
+      id: String(data.user.id || data.user._id || ''),
+      studentId: data.user.studentId ? String(data.user.studentId) : null,
+      email: data.user.email,
+      name: data.user.name || validated.email.split('@')[0],
+      role: data.user.role || 'student',
+      rollNo: data.user.rollNo || null,
+      rollNumber: data.user.rollNo || data.user.rollNumber || null,
+      department: data.user.department || 'Computer Engineering',
+      semester: data.user.semester || 5,
+      section: data.user.section || 'B',
+      labBatch: data.user.labBatch || 'C',
+      status: data.user.status || 'active',
+    },
+  };
+
+  await setSession(result.token, result.user);
+  notifyAuthSessionChange();
+  return result;
 }
 
 export async function signup(input: SignupInput): Promise<AuthResult> {
   const validated = signupSchema.parse(input);
-  const baseUrl = getApiBaseUrl();
+  const data = await apiRequest<{ token: string; user: any }>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: validated.name,
+      email: validated.email.toLowerCase(),
+      password: validated.password,
+    }),
+  });
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const response = await request(`${baseUrl}/auth/register`, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: validated.name,
-        email: validated.email.toLowerCase(),
-        password: validated.password,
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.message || data.error || 'Registration failed');
-    }
-
-    if (!data.token || !data.user) {
-      throw new Error('Registration could not be completed.');
-    }
-
-    const result: AuthResult = {
-      token: data.token,
-      user: {
-        id: String(data.user.id || data.user._id || ''),
-        email: data.user.email,
-        name: data.user.name || validated.name,
-        role: data.user.role || 'student',
-        rollNumber: data.user.rollNumber,
-        department: data.user.department,
-        semester: data.user.semester,
-        academicYear: data.user.academicYear,
-      },
-    };
-
-    await setSession(result.token, result.user);
-    return result;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Request timed out. Please check your connection.');
-    }
-    throw err;
+  if (!data?.token || !data?.user) {
+    throw new Error('Registration could not be completed.');
   }
+
+  const result: AuthResult = {
+    token: data.token,
+    user: {
+      id: String(data.user.id || data.user._id || ''),
+      studentId: data.user.studentId ? String(data.user.studentId) : null,
+      email: data.user.email,
+      name: data.user.name || validated.name,
+      role: data.user.role || 'student',
+      rollNo: data.user.rollNo || null,
+      rollNumber: data.user.rollNo || data.user.rollNumber || null,
+      department: data.user.department || 'Computer Engineering',
+      semester: data.user.semester || 5,
+      section: data.user.section || 'B',
+      labBatch: data.user.labBatch || 'C',
+      status: data.user.status || 'active',
+    },
+  };
+
+  await setSession(result.token, result.user);
+  notifyAuthSessionChange();
+  return result;
 }
 
 export async function logout(): Promise<void> {
   await clearSession();
+  notifyAuthSessionChange();
 }

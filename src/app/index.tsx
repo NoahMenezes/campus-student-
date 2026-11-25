@@ -2,13 +2,14 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 
-import { isAuthenticated } from '@/services/auth';
+import { getUser, isAuthenticated } from '@/services/auth';
 
 export default function Root() {
   useEffect(() => {
-    isAuthenticated().then((authed) => {
+    isAuthenticated().then(async (authed) => {
       if (authed) {
-        router.replace('/home');
+        const u = await getUser().catch(() => null);
+        router.replace((u?.role === 'admin' ? '/demo-center' : '/home') as any);
       } else {
         router.replace('/login');
       }

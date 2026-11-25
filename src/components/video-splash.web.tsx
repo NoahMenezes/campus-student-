@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { isAuthenticated } from '@/services/auth';
+import { getUser, isAuthenticated } from '@/services/auth';
 
 const FADE_MS = 400;
 const DURATION_FALLBACK_MS = 10000;
@@ -20,9 +20,10 @@ export function VideoSplashOverlay() {
     setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});
       setVisible(false);
-      isAuthenticated().then((authed) => {
+      isAuthenticated().then(async (authed) => {
         if (authed) {
-          router.replace('/home');
+          const u = await getUser().catch(() => null);
+          router.replace((u?.role === 'admin' ? '/demo-center' : '/home') as any);
         } else {
           router.replace('/login');
         }

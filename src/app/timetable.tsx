@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,11 +13,14 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '@/components/bottom-tab-bar';
-import { getStudentBatch, setStudentBatch } from '@/services/attendance-manager';
+import {
+  getStudentBatch,
+  getTimetableSlotsFromApi,
+  setStudentBatch,
+} from '@/services/attendance-manager';
 import {
   getCurrentISTTimeMinutes,
   getDayOfWeekFromDate,
-  getSlotsForDayAndBatch,
   parseMinutesFromTimeString,
 } from '@/services/timetable';
 import { DayOfWeek, LabBatch, TimetableSlot } from '@/types/attendance';
@@ -31,24 +35,27 @@ export default function TimetableScreen() {
   const [batch, setBatch] = useState<LabBatch>('C');
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
 
-  useEffect(() => {
-    getStudentBatch().then(setBatch);
+  const loadSlots = useCallback(async (day: DayOfWeek, explicitBatch?: LabBatch) => {
+    try {
+      const activeBatch = explicitBatch ?? (await getStudentBatch());
+      setBatch(activeBatch);
+      const res = await getTimetableSlotsFromApi(day, activeBatch);
+      setSlots(res.slots);
+    } catch (err) {
+      console.error('Failed to load timetable from API:', err);
+    }
   }, []);
 
-  const loadSlots = useCallback((day: DayOfWeek, b: LabBatch) => {
-    const list = getSlotsForDayAndBatch(day, b);
-    setSlots(list);
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadSlots(selectedDay, batch);
-  }, [selectedDay, batch, loadSlots]);
+  useFocusEffect(
+    useCallback(() => {
+      loadSlots(selectedDay);
+    }, [selectedDay, loadSlots])
+  );
 
   const handleToggleBatch = async (newBatch: LabBatch) => {
     setBatch(newBatch);
     await setStudentBatch(newBatch);
-    loadSlots(selectedDay, newBatch);
+    await loadSlots(selectedDay, newBatch);
   };
 
   const currentISTMinutes = getCurrentISTTimeMinutes();

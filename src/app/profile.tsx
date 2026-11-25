@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -32,29 +32,33 @@ export default function ProfileScreen() {
   const [summary, setSummary] = useState<OverallAttendanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
+  const loadProfile = useCallback(async () => {
+    try {
       const [u, b, s] = await Promise.all([
         getUser(),
         getStudentBatch(),
         getOverallAttendanceSummary(),
       ]);
-      if (mounted) {
-        setUser(u);
-        setBatch(b);
-        setSummary(s);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+      setUser(u);
+      setBatch(b);
+      setSummary(s);
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const handleToggleBatch = async (newBatch: LabBatch) => {
     setBatch(newBatch);
     await setStudentBatch(newBatch);
+    await loadProfile();
   };
 
   const handleResetData = () => {
@@ -219,6 +223,20 @@ export default function ProfileScreen() {
               <Text style={styles.resetBtnText}>Clear &amp; Reset Attendance Records</Text>
             </Pressable>
           </Animated.View>
+
+          {/* Admin-only Hidden Console Link */}
+          {user?.role === 'admin' ? (
+            <Animated.View entering={FadeInDown.delay(130).duration(300)}>
+              <Pressable
+                onPress={() => router.push('/demo-center' as any)}
+                style={[styles.resetBtn, { borderColor: '#3B82F6', backgroundColor: 'rgba(0, 82, 255, 0.16)', alignSelf: 'stretch', alignItems: 'center', paddingVertical: 12 }]}
+              >
+                <Text style={[styles.resetBtnText, { color: '#93C5FD', fontSize: 13 }]}>
+                  OPEN DEMO CENTER (ADMIN)
+                </Text>
+              </Pressable>
+            </Animated.View>
+          ) : null}
 
           {/* Logout Button */}
           <Animated.View entering={FadeInDown.delay(150).duration(300)}>
