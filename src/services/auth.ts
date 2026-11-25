@@ -154,11 +154,17 @@ export async function clearSession(): Promise<void> {
 }
 
 export const getApiBaseUrl = (): string => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return `http://${host}:4000`;
+    }
+  }
   const configured = process.env.EXPO_PUBLIC_API_URL;
   if (configured && configured.trim().length > 0) {
     return configured.trim().replace(/\/+$/, '');
   }
-  return 'http://192.168.31.151:4000';
+  return 'http://localhost:4000';
 };
 
 export class ApiRequestError extends Error {
@@ -224,6 +230,9 @@ export async function apiRequest<T = any>(path: string, init?: RequestInit): Pro
     }
 
     if (!response.ok) {
+      if (response.status === 401 && path !== '/auth/login' && path !== '/auth/register') {
+        await clearSession();
+      }
       const msg =
         bodyData?.error || bodyData?.message || payload?.error || `Request failed (${response.status})`;
       throw new ApiRequestError(msg, response.status, false, response.status >= 500);

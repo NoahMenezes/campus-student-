@@ -24,7 +24,7 @@ import {
   markAttendanceSession,
   setStudentBatch,
 } from '@/services/attendance-manager';
-import { getUser } from '@/services/auth';
+import { ApiRequestError, getToken, getUser } from '@/services/auth';
 import { useAttendanceLiveSync } from '@/services/attendance-stream';
 import { toggleDemoMode } from '@/services/demo-mode';
 import { getUnreadNotificationCount } from '@/services/notifications';
@@ -47,9 +47,16 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     try {
+      const token = await getToken();
+      if (!token) {
+        router.replace('/login' as any);
+        return;
+      }
+
       const [u, b] = await Promise.all([getUser(), getStudentBatch()]);
       if (u?.name) setUserName(u.name);
       setBatch(b);
@@ -63,8 +70,15 @@ export default function HomeScreen() {
       setOverall(sum);
       setTodayData(tData);
       setUnreadNotifs(unreadCount);
+      setLoadError(null);
     } catch (err) {
-      console.error('Home load error:', err);
+      if (err instanceof ApiRequestError && err.status === 401) {
+        router.replace('/login' as any);
+        return;
+      }
+      setLoadError(
+        err instanceof Error ? err.message : 'Unable to reach server. Check your connection.'
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -212,6 +226,16 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/* Connection Error Banner */}
+          {loadError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{loadError}</Text>
+              <Pressable onPress={loadAll} style={styles.retryBtn}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* Batch Switcher Bar */}
           <View style={styles.batchBar}>
@@ -856,6 +880,33 @@ const styles = StyleSheet.create({
     color: '#E5E7EB',
   },
   pActionTextActive: {
+    color: '#FFFFFF',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#FCA5A5',
+    fontWeight: '500',
+  },
+  retryBtn: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  retryBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });
